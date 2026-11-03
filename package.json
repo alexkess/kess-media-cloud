@@ -1,0 +1,14 @@
+{
+  "name": "kess-cloud",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Kess Media cloud platform: build, host and care for client websites, with a client portal.",
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --no-warnings=ExperimentalWarning server/index.js",
+    "dev": "DEMO=1 node --no-warnings=ExperimentalWarning --watch server/index.js",
+    "seed": "node --no-warnings=ExperimentalWarning server/seed.js",
+    "test": "node --no-warnings=ExperimentalWarning --test test/*.test.js"
+  }
+}
