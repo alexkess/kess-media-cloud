@@ -4,6 +4,21 @@ The Kess Media platform for building, hosting and caring for client websites, wi
 
 One Node app, no external services. SQLite holds the data, and the app itself hosts the client sites.
 
+## Quick start on your computer
+
+1. Install **Node.js 22 LTS or newer** from https://nodejs.org. Check it with `node -v` (it should print v22.13 or higher).
+2. Unzip `kess-cloud.zip` somewhere, e.g. your Documents folder.
+3. Open Terminal (Mac) or PowerShell (Windows) in that folder:
+   ```bash
+   cd ~/Documents/kess-cloud
+   ```
+   ```bash
+   npm run dev
+   ```
+4. Open http://localhost:8787 and sign in with the demo logins under "Run it" below.
+
+There's nothing to `npm install`. Data is saved in the `data/` folder; delete that folder to start fresh.
+
 ## What it does
 
 ### For Kess Media (agency console)

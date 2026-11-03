@@ -1,13 +1,18 @@
-import { createApp } from './app.js';
-import { hashPassword, randomToken } from './lib/auth.js';
-import { ensurePlans, seedDemo } from './seed.js';
-import { startMonitor } from './lib/monitor.js';
+const [major, minor] = process.versions.node.split('.').map(Number);
+if (major < 22 || (major === 22 && minor < 13)) {
+  console.error(`Kess Cloud needs Node.js 22.13 or newer (you have ${process.versions.node}). Download the LTS from https://nodejs.org`);
+  process.exit(1);
+}
+const { createApp } = await import('./app.js');
+const { hashPassword, randomToken } = await import('./lib/auth.js');
+const { ensurePlans, seedDemo } = await import('./seed.js');
+const { startMonitor } = await import('./lib/monitor.js');
 
 const PORT = Number(process.env.PORT || 8787);
 const { server, db } = createApp();
 
 ensurePlans(db);
-if (process.env.DEMO === '1') seedDemo(db, { ownerEmail: process.env.KESS_OWNER_EMAIL, ownerPassword: process.env.KESS_OWNER_PASSWORD });
+if (process.env.DEMO === '1' || process.argv.includes('--demo')) seedDemo(db, { ownerEmail: process.env.KESS_OWNER_EMAIL, ownerPassword: process.env.KESS_OWNER_PASSWORD });
 
 if (!db.get("SELECT 1 FROM users WHERE role = 'owner'")) {
   const email = process.env.KESS_OWNER_EMAIL || 'alex@kess.media';
