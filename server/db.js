@@ -148,6 +148,13 @@ CREATE TABLE IF NOT EXISTS activity (
   detail TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS outbox (
+  id INTEGER PRIMARY KEY, to_addr TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL,
+  provider TEXT NOT NULL, status TEXT NOT NULL, error TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS job_runs (key TEXT PRIMARY KEY, ran_at TEXT NOT NULL DEFAULT (datetime('now')));
+
 CREATE INDEX IF NOT EXISTS idx_sites_client ON sites(client_id);
 CREATE INDEX IF NOT EXISTS idx_requests_client ON requests(client_id, status);
 CREATE INDEX IF NOT EXISTS idx_submissions_site ON submissions(site_id, created_at);
@@ -160,7 +167,20 @@ export function openDb(file) {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
   const db = new DatabaseSync(file);
   db.exec(SCHEMA);
+  migrate(db);
   return wrap(db);
+}
+
+// Additive column migrations for databases created by earlier versions.
+const COLUMNS = {
+  users: { email_notify: 'INTEGER NOT NULL DEFAULT 1', totp_secret: 'TEXT', totp_pending: 'TEXT', totp_enabled: 'INTEGER NOT NULL DEFAULT 0' },
+  invoices: { stripe_session_id: 'TEXT', reminded_at: 'TEXT', paid_via: 'TEXT' },
+};
+function migrate(db) {
+  for (const [table, cols] of Object.entries(COLUMNS)) {
+    const have = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name));
+    for (const [name, def] of Object.entries(cols)) if (!have.has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${def}`);
+  }
 }
 
 // Small convenience wrapper: db.all / db.get / db.run / db.tx
@@ -198,6 +218,8 @@ export const DEFAULT_SETTINGS = {
   bank_details: '',
   webhook_url: '',
   public_base_url: '',
+  email_reports: '1',
+  email_reminders: '1',
 };
 
 export function getSettings(db) {

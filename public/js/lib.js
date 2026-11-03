@@ -13,6 +13,7 @@ export async function api(path, { method = 'GET', body, raw } = {}) {
     if (res.status === 401 && !path.startsWith('/api/auth/')) { location.hash = '#/login'; }
     const err = new Error(data?.error || `Request failed (${res.status})`);
     err.status = res.status;
+    err.data = data;
     throw err;
   }
   return data;

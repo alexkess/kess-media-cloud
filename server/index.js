@@ -7,6 +7,9 @@ const { createApp } = await import('./app.js');
 const { hashPassword, randomToken } = await import('./lib/auth.js');
 const { ensurePlans, seedDemo } = await import('./seed.js');
 const { startMonitor } = await import('./lib/monitor.js');
+const { startJobs } = await import('./lib/jobs.js');
+const { join, dirname } = await import('node:path');
+const { fileURLToPath } = await import('node:url');
 
 const PORT = Number(process.env.PORT || 8787);
 const { server, db } = createApp();
@@ -22,6 +25,8 @@ if (!db.get("SELECT 1 FROM users WHERE role = 'owner'")) {
 }
 
 if (process.env.MONITOR !== '0') startMonitor(db, { intervalMin: Number(process.env.MONITOR_INTERVAL_MIN || 5) });
+
+if (process.env.JOBS !== '0') startJobs(db, process.env.DATA_DIR || join(dirname(fileURLToPath(import.meta.url)), '..', 'data'));
 
 server.listen(PORT, () => console.log(`Kess Cloud running on http://localhost:${PORT}`));
 

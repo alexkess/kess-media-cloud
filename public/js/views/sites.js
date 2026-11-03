@@ -39,10 +39,10 @@ async function newSite(clientId) {
   } catch (e) { fail(e); }
 }
 
-const TABS_AGENCY = [['', 'Overview'], ['pages', 'Pages'], ['design', 'Design'], ['settings', 'Settings'], ['versions', 'Versions'], ['seo', 'SEO check'], ['analytics', 'Analytics'], ['leads', 'Enquiries'], ['uptime', 'Uptime']];
-const TABS_CLIENT = [['', 'Overview'], ['pages', 'Edit content'], ['versions', 'Versions'], ['analytics', 'Analytics'], ['leads', 'Enquiries'], ['seo', 'Health'], ['uptime', 'Uptime']];
+const TABS_AGENCY = [['', 'Overview'], ['pages', 'Pages'], ['design', 'Design'], ['settings', 'Settings'], ['versions', 'Versions'], ['seo', 'SEO check'], ['analytics', 'Analytics'], ['report', 'Monthly report'], ['leads', 'Enquiries'], ['uptime', 'Uptime']];
+const TABS_CLIENT = [['', 'Overview'], ['pages', 'Edit content'], ['versions', 'Versions'], ['analytics', 'Analytics'], ['report', 'Monthly report'], ['leads', 'Enquiries'], ['seo', 'Health'], ['uptime', 'Uptime']];
 
-export async function detail(el, { id, tab = '', pageId }) {
+export async function detail(el, { id, tab = '', pageId }, query = new URLSearchParams()) {
   const site = await api(`/api/sites/${id}`);
   const agency = isAgency();
   let tabs = agency ? TABS_AGENCY : TABS_CLIENT;
@@ -56,7 +56,7 @@ export async function detail(el, { id, tab = '', pageId }) {
   el.querySelector('#review')?.addEventListener('click', () => sendVersion(site, 'review', el));
   el.querySelector('#publish')?.addEventListener('click', () => sendVersion(site, 'publish', el));
   const t = el.querySelector('#tab');
-  const views = { '': overview, pages: (t, s) => import('./editor.js').then((m) => m.default(t, s, pageId)), design, settings, versions, seo, analytics, leads, uptime };
+  const views = { '': overview, pages: (t, s) => import('./editor.js').then((m) => m.default(t, s, pageId)), design, settings, versions, seo, analytics, report: (t, s) => report(t, s, query.get('month')), leads, uptime };
   await (views[tab] || overview)(t, site);
 }
 
@@ -267,4 +267,17 @@ async function uptime(t, site) {
     e.target.disabled = true;
     try { const r = await api(`/api/sites/${site.id}/check`, { method: 'POST', body: {} }); toast(r.ok ? `Up · ${r.ms} ms` : `Down · ${r.error}`, !r.ok); detail(document.getElementById('view'), { id: site.id, tab: 'uptime' }); } catch (err) { fail(err); e.target.disabled = false; }
   });
+}
+
+async function report(t, site, month) {
+  const months = [];
+  const d = new Date();
+  for (let i = 0; i < 13; i++) { const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - i, 1)); months.push(x.toISOString().slice(0, 7)); }
+  const m = month && months.includes(month) ? month : months[1];
+  const src = `/reports/sites/${site.id}?month=${m}`;
+  render(t, html`<div class="row between" style="margin-bottom:12px"><span class="muted small">Traffic, enquiries, uptime and work done. ${isAgency() ? 'Clients get a link to this on the 1st of each month.' : 'We send you a link to this on the 1st of each month.'}</span>
+    <span class="row"><select class="i" id="m" style="width:auto">${months.map((x) => html`<option value="${x}" ${x === m ? 'selected' : ''}>${new Date(x + '-01T00:00:00Z').toLocaleDateString('en-AU', { month: 'long', year: 'numeric', timeZone: 'UTC' })}${x === months[0] ? ' (so far)' : ''}</option>`)}</select>
+    <a class="btn" href="${src}" target="_blank" rel="noopener">Open / PDF ↗</a></span></div>
+    <iframe title="Monthly report" src="${src}" style="width:100%;height:calc(100vh - 230px);border:1px solid var(--line);border-radius:10px;background:#fff"></iframe>`);
+  t.querySelector('#m').onchange = (e) => { location.hash = `#/sites/${site.id}/report?month=${e.target.value}`; };
 }

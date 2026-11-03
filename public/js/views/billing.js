@@ -33,9 +33,10 @@ async function newInvoice(clients, clientId) {
   try { const inv = await api('/api/invoices', { method: 'POST', body: { client_id: Number(v.client_id), notes: v.notes, items: [] } }); location.hash = `#/invoices/${inv.id}`; } catch (e) { fail(e); }
 }
 
-export async function invoice(el, { id }) {
+export async function invoice(el, { id }, q = new URLSearchParams()) {
   const agency = isAgency();
   const inv = await api(`/api/invoices/${id}`);
+  if (q.get('paid')) { toast(inv.status === 'paid' ? 'Payment received. Thank you!' : 'Thanks! Your payment is processing and will show here shortly.'); history.replaceState(null, '', `#/invoices/${id}`); }
   const editable = agency && inv.status === 'draft';
   let items = inv.items.map((i) => ({ ...i }));
   const draw = () => {
@@ -45,7 +46,10 @@ export async function invoice(el, { id }) {
         <div class="row"><a class="btn" href="/invoices/${inv.id}/print" target="_blank" rel="noopener">View / PDF ↗</a>
         ${agency && inv.status === 'draft' ? html`<button class="btn danger" id="del">Delete</button><button class="btn primary" id="send">Mark as sent</button>` : ''}
         ${agency && inv.status === 'sent' ? html`<button class="btn" id="void">Void</button><button class="btn primary" id="paid">Mark paid</button>` : ''}
-        ${agency && inv.status === 'paid' ? html`<button class="btn" id="unpaid">Mark unpaid</button>` : ''}</div></div>
+        ${agency && inv.status === 'paid' ? html`<button class="btn" id="unpaid">Mark unpaid</button>` : ''}
+        ${inv.can_pay_online ? html`<button class="btn primary" id="paynow">Pay ${money(inv.total_cents, { cents: true })} by card</button>` : ''}</div></div>
+      ${!agency && inv.status === 'sent' && inv.bank_details ? html`<div class="callout" style="margin-bottom:16px"><strong>${inv.can_pay_online ? 'Or pay by bank transfer' : 'How to pay'}</strong><div class="pre">${inv.bank_details}</div><div class="small muted">Reference: ${inv.number}</div></div>` : ''}
+      ${inv.paid_via ? html`<p class="muted small">Paid ${inv.paid_via === 'stripe' ? 'online by card (Stripe)' : 'by bank transfer / recorded manually'}.</p>` : ''}
       <div class="card table-wrap"><table class="t"><thead><tr><th style="width:55%">Description</th><th class="n">Qty</th><th class="n">Unit ex GST</th><th class="n">Amount</th>${editable ? html`<th></th>` : ''}</tr></thead><tbody>
         ${items.map((i, n) => editable ? html`<tr><td><input class="i" data-k="description" data-n="${n}" value="${i.description}"></td><td><input class="i right" style="width:70px" type="number" step="0.25" data-k="qty" data-n="${n}" value="${i.qty}"></td><td><input class="i right" style="width:110px" type="number" step="0.01" data-k="unit" data-n="${n}" value="${centsToDollars(i.unit_cents)}"></td><td class="n">${money(Math.round(i.qty * i.unit_cents), { cents: true })}</td><td><button class="btn sm ghost danger" data-rm="${n}">✕</button></td></tr>`
           : html`<tr><td>${i.description}</td><td class="n">${i.qty}</td><td class="n">${money(i.unit_cents, { cents: true })}</td><td class="n">${money(Math.round(i.qty * i.unit_cents), { cents: true })}</td></tr>`)}
@@ -75,6 +79,10 @@ export async function invoice(el, { id }) {
       items.push({ description: `${p.name} care plan (${new Date().toISOString().slice(0, 7)})`, qty: 1, unit_cents: p.price_cents }); draw();
     });
     el.querySelector('#save')?.addEventListener('click', () => save());
+    el.querySelector('#paynow')?.addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      try { const r = await api(`/api/invoices/${id}/pay`, { method: 'POST', body: {} }); location.href = r.url; } catch (err) { fail(err); e.target.disabled = false; }
+    });
     el.querySelector('#send')?.addEventListener('click', async () => { if (await confirmBox('Mark as sent?', 'The client can now see it in their portal and gets a notification. Line items lock.', 'Mark sent')) save({ status: 'sent' }); });
     el.querySelector('#paid')?.addEventListener('click', () => save({ status: 'paid' }));
     el.querySelector('#unpaid')?.addEventListener('click', () => save({ status: 'sent' }));

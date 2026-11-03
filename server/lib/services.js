@@ -1,5 +1,6 @@
 import { getSettings } from '../db.js';
 import { HttpError, notFound } from './http.js';
+import { sendMail, appUrl } from './mail.js';
 
 export const j = (s, fallback) => { try { return s ? JSON.parse(s) : fallback; } catch { return fallback; } };
 
@@ -12,11 +13,15 @@ export function logActivity(db, { user, client_id = null, site_id = null, action
 }
 
 // Notify: audience 'agency' (all owner/staff) or 'client' (all users of a client).
-export function notify(db, { audience, client_id = null, title, body = '', link = '' }) {
+export function notify(db, { audience, client_id = null, title, body = '', link = '', email = true }) {
   const users = audience === 'agency'
-    ? db.all("SELECT id FROM users WHERE role IN ('owner','staff')")
-    : db.all("SELECT id FROM users WHERE role = 'client' AND client_id = ?", client_id);
-  for (const u of users) db.run('INSERT INTO notifications (user_id, audience, client_id, title, body, link) VALUES (?, ?, ?, ?, ?, ?)', u.id, audience, client_id, title, body, link);
+    ? db.all("SELECT id, email, name, email_notify, password_hash IS NOT NULL active FROM users WHERE role IN ('owner','staff')")
+    : db.all("SELECT id, email, name, email_notify, password_hash IS NOT NULL active FROM users WHERE role = 'client' AND client_id = ?", client_id);
+  const url = link ? `${appUrl(db)}/${link.startsWith('#') ? link : '#' + link}` : appUrl(db);
+  for (const u of users) {
+    db.run('INSERT INTO notifications (user_id, audience, client_id, title, body, link) VALUES (?, ?, ?, ?, ?, ?)', u.id, audience, client_id, title, body, link);
+    if (email && u.email_notify && u.active) sendMail(db, { to: u.email, subject: title, heading: title, lines: [`Hi ${u.name.split(' ')[0]},`, body], button: { label: 'Open in Kess Cloud', url } });
+  }
   const hook = getSettings(db).webhook_url;
   if (hook && audience === 'agency' && /^https:\/\//.test(hook)) {
     // Slack-compatible payload; also fine for Make/Zapier/n8n.

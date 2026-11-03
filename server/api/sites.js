@@ -6,6 +6,8 @@ import { SECTION_TYPES, defaultTheme, auditPage, THEME_PRESETS } from '../../sha
 import { astroProjectFiles } from '../lib/astro-export.js';
 import { tarGz } from '../lib/tar.js';
 import { checkSite, uptimeSummary } from '../lib/monitor.js';
+import { siteReport, reportHtml, prevMonth } from '../lib/report.js';
+import { html as sendHtml } from '../lib/http.js';
 
 export const STAGES = ['lead', 'proposal', 'design', 'build', 'review', 'live', 'care', 'archived'];
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -374,6 +376,17 @@ export default function register(r) {
     const site = getSite(ctx.db, Number(ctx.params.id));
     if (!site.domain) throw bad('Add a domain first');
     return checkSite(ctx.db, site);
+  });
+
+  // ----- monthly report -----
+  const monthOf = (ctx) => (/^\d{4}-\d{2}$/.test(ctx.query.get('month') || '') ? ctx.query.get('month') : prevMonth());
+  r.get('/api/sites/:id/report', async (ctx) => {
+    const site = siteAccess(ctx, Number(ctx.params.id));
+    return siteReport(ctx.db, site.id, monthOf(ctx));
+  });
+  r.get('/reports/sites/:id', async (ctx) => {
+    const site = siteAccess(ctx, Number(ctx.params.id));
+    sendHtml(ctx.res, 200, reportHtml(ctx.db, siteReport(ctx.db, site.id, monthOf(ctx))), { 'Cache-Control': 'no-store', 'X-Frame-Options': 'SAMEORIGIN' });
   });
 
   // ----- analytics -----

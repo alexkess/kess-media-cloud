@@ -58,7 +58,7 @@ export async function detail(el, { id }) {
   el.querySelector('#invite').onclick = async () => {
     const v = await modal({ title: `Invite someone from ${c.name}`, body: html`${field('Name', 'name', { value: c.contact_name, required: true })}${field('Email', 'email', { type: 'email', value: c.email, required: true })}`, submit: 'Create invite' });
     if (!v) return;
-    try { const r = await api(`/api/clients/${id}/users`, { method: 'POST', body: v }); await showLink(r.invite_url, v.name); detail(el, { id }); } catch (e) { fail(e); }
+    try { const r = await api(`/api/clients/${id}/users`, { method: 'POST', body: v }); await showLink(r.invite_url, v.name, r.emailed ? v.email : null); detail(el, { id }); } catch (e) { fail(e); }
   };
   el.querySelectorAll('[data-reset]').forEach((b) => b.onclick = async () => {
     try { const r = await api(`/api/users/${b.dataset.reset}/reset`, { method: 'POST', body: {} }); await showLink(r.invite_url); } catch (e) { fail(e); }
@@ -73,8 +73,8 @@ export async function detail(el, { id }) {
   });
 }
 
-export async function showLink(url, name) {
-  await modal({ title: 'Sign-in link ready', submit: '', cancel: 'Done', body: html`<p style="margin:0">Send this link${name ? ` to ${name}` : ''}. It works once and expires. They'll choose their own password.</p>
+export async function showLink(url, name, emailedTo) {
+  await modal({ title: emailedTo ? 'Invite sent' : 'Sign-in link ready', submit: '', cancel: 'Done', body: html`<p style="margin:0">${emailedTo ? `We emailed this link to ${emailedTo}. You can also copy it below.` : `Send this link${name ? ` to ${name}` : ''}.`} It works once and expires. They'll choose their own password.</p>
     <div class="row"><input class="i mono" readonly value="${url}" id="lnk"><button type="button" class="btn" id="cp">Copy</button></div>`,
     onOpen: (f) => { f.querySelector('#cp').onclick = () => { navigator.clipboard?.writeText(url); toast('Copied'); }; f.querySelector('#lnk').select(); } });
 }

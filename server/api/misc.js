@@ -6,6 +6,10 @@ import { requireAgency, requireOwner, requireUser, assertClientAccess, isAgency 
 import { setSetting, DEFAULT_SETTINGS } from '../db.js';
 import { loadInvoice, j } from '../lib/services.js';
 import { inviteUser } from './clients.js';
+import { createBackup, listBackups, backupDir, offsiteEnabled } from '../lib/backup.js';
+import { mailConfig, sendMail } from '../lib/mail.js';
+import { stripeEnabled } from '../lib/stripe.js';
+import { runDaily } from '../lib/jobs.js';
 
 const ASSET_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'application/pdf', 'video/mp4', 'image/svg+xml', 'text/plain', 'application/zip']);
 
@@ -90,6 +94,38 @@ export default function register(r, { dataDir }) {
     const { id, token } = inviteUser(ctx.db, { email: email.trim(), name: (name || email).trim(), role: role === 'owner' ? 'owner' : 'staff' });
     return { id, invite_url: `${ctx.baseUrl}/#/invite/${token}` };
   });
+
+  // ----- integrations, email outbox, backups (owner) -----
+  r.get('/api/integrations', async (ctx) => {
+    requireOwner(ctx);
+    const m = mailConfig();
+    return {
+      email: { provider: m.provider, from: m.from },
+      stripe: { enabled: stripeEnabled(), webhook: !!process.env.STRIPE_WEBHOOK_SECRET, webhook_url: `${ctx.baseUrl}/api/public/stripe/webhook` },
+      backups: { offsite: offsiteEnabled(), local_dir: backupDir(dataDir), keep: Number(process.env.BACKUP_KEEP || 14), enabled: process.env.BACKUPS !== '0' },
+      monitor: process.env.MONITOR !== '0',
+    };
+  });
+  r.get('/api/outbox', async (ctx) => {
+    requireOwner(ctx);
+    return ctx.db.all('SELECT id, to_addr, subject, body, provider, status, error, created_at FROM outbox ORDER BY id DESC LIMIT 100');
+  });
+  r.post('/api/outbox/test', async (ctx) => {
+    requireOwner(ctx);
+    const out = await sendMail(ctx.db, { to: ctx.user.email, subject: 'Kess Cloud test email', heading: 'Email is working', lines: ['This is a test from Kess Cloud. If you can read this, client notifications, invites and reminders will arrive too.'] });
+    return out;
+  });
+  r.get('/api/backups', async (ctx) => { requireOwner(ctx); return listBackups(dataDir); });
+  r.post('/api/backups', async (ctx) => { requireOwner(ctx); return createBackup(ctx.db, dataDir); });
+  r.get('/api/backups/:name', async (ctx) => {
+    requireOwner(ctx);
+    const name = ctx.params.name;
+    if (!listBackups(dataDir).some((b) => b.name === name)) throw notFound('Backup not found');
+    const buf = await readFile(join(backupDir(dataDir), name));
+    ctx.res.writeHead(200, { 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="${name}"`, 'Content-Length': buf.length });
+    ctx.res.end(buf);
+  });
+  r.post('/api/jobs/run', async (ctx) => { requireOwner(ctx); return runDaily(ctx.db, dataDir); });
 
   // ----- assets (client files + site images) -----
   r.get('/api/assets', async (ctx) => {

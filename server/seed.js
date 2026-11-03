@@ -26,6 +26,7 @@ export function seedDemo(db, { ownerEmail = 'alex@kess.media', ownerPassword = '
     owner = db.get("SELECT * FROM users WHERE role = 'owner' LIMIT 1");
   }
   if (db.get("SELECT 1 FROM clients WHERE name = 'Harbour Physio (demo)'")) return { owner };
+  if (!db.get("SELECT 1 FROM settings WHERE key = 'bank_details'")) db.run("INSERT INTO settings (key, value) VALUES ('bank_details', 'Demo only: BSB 000-000, Account 0000 0000, Name: Kess Media')");
   const plan = (n) => db.get('SELECT id FROM plans WHERE name = ?', n)?.id;
 
   const c1 = db.run("INSERT INTO clients (name, contact_name, email, phone, address, status, notes) VALUES ('Harbour Physio (demo)', 'Sam Lee', 'sam@harbourphysio.example', '02 9000 1234', 'Balmain NSW', 'active', 'Demo client. Prefers email, not calls.')").id;

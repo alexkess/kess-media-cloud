@@ -1,6 +1,7 @@
 import { bad, notFound } from '../lib/http.js';
 import { requireAgency, requireOwner, assertClientAccess, randomToken, sha256 } from '../lib/auth.js';
 import { logActivity, loadInvoice } from '../lib/services.js';
+import { sendMail, mailConfig } from '../lib/mail.js';
 
 const FIELDS = ['name', 'contact_name', 'email', 'phone', 'abn', 'address', 'notes', 'status'];
 const STATUSES = ['lead', 'active', 'paused', 'past'];
@@ -82,7 +83,13 @@ export default function register(r) {
     if (!/^\S+@\S+\.\S+$/.test(email || '')) throw bad('A valid email is required');
     const { id: userId, token } = inviteUser(ctx.db, { email: email.trim(), name: (name || email).trim(), role: 'client', client_id: id });
     logActivity(ctx.db, { user: ctx.user, client_id: id, action: 'user.invited', detail: email });
-    return { id: userId, invite_url: `${ctx.baseUrl}/#/invite/${token}` };
+    const invite_url = `${ctx.baseUrl}/#/invite/${token}`;
+    const client = ctx.db.get('SELECT name FROM clients WHERE id = ?', id);
+    const s = ctx.settings();
+    sendMail(ctx.db, { to: email.trim(), subject: `Your ${s.agency_name} client portal`, heading: `Welcome to your ${s.agency_name} portal`,
+      lines: [`Hi ${(name || '').split(' ')[0] || 'there'},`, `${ctx.user.name} has set up a portal for ${client.name}. You can preview and approve website changes, send requests, see enquiries from your website and view invoices.`, 'The link below works once and expires in 14 days.'],
+      button: { label: 'Set your password', url: invite_url } });
+    return { id: userId, invite_url, emailed: mailConfig().provider !== 'log' };
   });
 
   r.post('/api/users/:id/reset', async (ctx) => {

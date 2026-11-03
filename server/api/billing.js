@@ -2,6 +2,16 @@ import { bad, notFound, forbidden, html } from '../lib/http.js';
 import { requireAgency, requireOwner, assertClientAccess, isAgency, requireUser } from '../lib/auth.js';
 import { j, logActivity, notify, loadInvoice, nextInvoiceNumber, addDays, generateCareInvoices, computeEstimate, clientFacingEstimate, money, kRange } from '../lib/services.js';
 import { esc } from '../../shared/sections.js';
+import { stripeEnabled, createCheckout, verifyStripeSignature } from '../lib/stripe.js';
+import { HttpError } from '../lib/http.js';
+
+export function markInvoicePaid(db, inv, { via, user = null }) {
+  if (inv.status === 'paid') return false;
+  db.run("UPDATE invoices SET status = 'paid', paid_at = date('now'), paid_via = ? WHERE id = ?", via, inv.id);
+  logActivity(db, { user, client_id: inv.client_id, action: 'invoice.paid', detail: `${inv.number}${via === 'stripe' ? ' (paid online)' : ''}` });
+  if (via === 'stripe') notify(db, { audience: 'agency', client_id: inv.client_id, title: `${inv.client_name} paid ${inv.number} online`, body: `${money(inv.total_cents)} inc GST`, link: `#/invoices/${inv.id}` });
+  return true;
+}
 
 function saveItems(db, invoiceId, items) {
   if (!Array.isArray(items)) throw bad('items must be an array');
@@ -84,7 +94,7 @@ export default function register(r) {
     const inv = loadInvoice(ctx.db, Number(ctx.params.id));
     assertClientAccess(ctx, inv.client_id);
     if (!isAgency(ctx.user) && inv.status === 'draft') throw notFound('Invoice not found');
-    return inv;
+    return { ...inv, can_pay_online: stripeEnabled() && inv.status === 'sent', bank_details: ctx.settings().bank_details };
   });
 
   r.patch('/api/invoices/:id', async (ctx) => {
@@ -97,6 +107,7 @@ export default function register(r) {
       ctx.db.run('UPDATE invoices SET issue_date=?, due_date=?, notes=?, status=?, paid_at=? WHERE id=?',
         b.issue_date || inv.issue_date, b.due_date || inv.due_date, b.notes ?? inv.notes, b.status || inv.status,
         b.status === 'paid' ? new Date().toISOString().slice(0, 10) : b.status && b.status !== 'paid' ? null : inv.paid_at, inv.id);
+      if (b.status === 'paid' && inv.status !== 'paid') ctx.db.run("UPDATE invoices SET paid_via = 'manual' WHERE id = ?", inv.id);
       if (b.items) saveItems(ctx.db, inv.id, b.items);
     });
     if (b.status && b.status !== inv.status) {
@@ -112,6 +123,36 @@ export default function register(r) {
     if (inv.status !== 'draft') throw bad('Only drafts can be deleted. Void sent invoices instead.');
     ctx.db.run('DELETE FROM invoices WHERE id = ?', inv.id);
     return { ok: true };
+  });
+
+  // Online payment via Stripe Checkout (client or agency).
+  r.post('/api/invoices/:id/pay', async (ctx) => {
+    const inv = loadInvoice(ctx.db, Number(ctx.params.id));
+    assertClientAccess(ctx, inv.client_id);
+    if (!stripeEnabled()) throw bad('Online payments are not set up yet. Please pay by bank transfer.');
+    if (inv.status !== 'sent') throw bad(inv.status === 'paid' ? 'This invoice is already paid' : 'This invoice is not ready to pay');
+    if (inv.total_cents < 50) throw bad('Amount too small to pay online');
+    const session = await createCheckout(inv, {
+      successUrl: `${ctx.baseUrl}/#/invoices/${inv.id}?paid=1`, cancelUrl: `${ctx.baseUrl}/#/invoices/${inv.id}`, agencyName: ctx.settings().agency_name,
+    }).catch((e) => { throw new HttpError(502, `Could not start payment: ${e.message}`); });
+    ctx.db.run('UPDATE invoices SET stripe_session_id = ? WHERE id = ?', session.id, inv.id);
+    return { url: session.url };
+  });
+
+  r.post('/api/public/stripe/webhook', async (ctx) => {
+    const raw = (await ctx.rawBody(500_000)).toString('utf8');
+    if (!verifyStripeSignature(raw, ctx.req.headers['stripe-signature'], process.env.STRIPE_WEBHOOK_SECRET)) throw new HttpError(400, 'Bad signature');
+    const evt = JSON.parse(raw);
+    if (evt.type === 'checkout.session.completed' && evt.data?.object?.payment_status === 'paid') {
+      const id = Number(evt.data.object.metadata?.invoice_id || evt.data.object.client_reference_id);
+      const row = id && ctx.db.get('SELECT id FROM invoices WHERE id = ?', id);
+      if (row) {
+        const inv = loadInvoice(ctx.db, id);
+        if (evt.data.object.amount_total === inv.total_cents) markInvoicePaid(ctx.db, inv, { via: 'stripe' });
+        else notify(ctx.db, { audience: 'agency', client_id: inv.client_id, title: `Payment for ${inv.number} did not match the invoice total`, body: `Paid ${money(evt.data.object.amount_total)}, invoice is ${money(inv.total_cents)}. Check Stripe.`, link: `#/invoices/${inv.id}` });
+      }
+    }
+    return { received: true };
   });
 
   r.post('/api/invoices/generate-care', async (ctx) => {
@@ -136,7 +177,7 @@ table{width:100%;border-collapse:collapse;margin-top:10px}th{text-align:left;bor
 .tot{margin-left:auto;width:280px;margin-top:14px}.tot div{display:flex;justify-content:space-between;padding:4px 6px}.tot .grand{border-top:1.2pt solid #1E5C34;font-weight:700;font-size:13pt;color:#1E5C34}
 .status{display:inline-block;padding:2px 10px;border-radius:99px;background:#E8EDE6;font-weight:700;font-size:9pt;text-transform:uppercase}.paid{background:#7BBF9A}.void{background:#eee;color:#888}
 .pay{background:#E8EDE6;border-radius:8px;padding:14px 18px;margin-top:28px;white-space:pre-line}.noprint{margin:20px 0}@media print{.noprint{display:none}body{margin:0}}</style></head><body>
-<div class="noprint"><button onclick="print()">Print or save as PDF</button></div>
+<div class="noprint"><button onclick="print()">Print or save as PDF</button>${stripeEnabled() && inv.status === 'sent' ? ` <a href="/#/invoices/${inv.id}" style="margin-left:8px">Pay online by card</a>` : ''}</div>
 <header><div><h1>Tax <em>invoice</em></h1><div>${esc(s.agency_name)}${s.agency_abn ? ` · ABN ${esc(s.agency_abn)}` : ''}<br>${esc(s.agency_address)}<br>${esc(s.agency_email)}</div></div>
 <div class="meta"><strong>${esc(inv.number)}</strong><br>Issued ${esc(inv.issue_date)}<br>Due ${esc(inv.due_date)}<br><span class="status ${esc(inv.status)}">${esc(inv.overdue ? 'overdue' : inv.status)}</span></div></header>
 <div class="cols"><div><h3>Bill to</h3><strong>${esc(inv.client_name)}</strong><br>${inv.contact_name ? esc(inv.contact_name) + '<br>' : ''}${inv.client_address ? esc(inv.client_address) + '<br>' : ''}${inv.client_abn ? 'ABN ' + esc(inv.client_abn) : ''}</div>
