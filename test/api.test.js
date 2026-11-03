@@ -180,6 +180,16 @@ test('new site from template, edit, publish, host on custom domain', async () =>
   assert.equal((await a('/api/sites', { method: 'POST', body: { client_id: 3, name: 'Dupe', domain: 'lumen-two.example' } })).status, 400);
 });
 
+test('TLS check only approves client domains (for Caddy on-demand certificates)', async () => {
+  const check = (d) => fetch(`${base}/api/public/tls-check?domain=${encodeURIComponent(d)}`).then((r) => r.status);
+  assert.equal(await check('lumen-two.example'), 200);
+  assert.equal(await check('www.lumen-two.example'), 200);
+  assert.equal(await check('LUMEN-TWO.EXAMPLE'), 200);
+  assert.equal(await check('evil.example'), 404);
+  assert.equal(await check(''), 404);
+  assert.equal(await check('www.evil.example'), 404);
+});
+
 test('Astro + Sanity export is a valid tarball with the expected files', async () => {
   const a = await login(OWNER);
   const r = await a('/api/sites/1/export');

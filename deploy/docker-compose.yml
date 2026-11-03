@@ -1,0 +1,43 @@
+# Kess Cloud on one server: the app plus Caddy for HTTPS (including client domains).
+# Start:   docker compose up -d --build
+# Logs:    docker compose logs -f
+# Update:  git pull && docker compose up -d --build
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      PORT: "8787"
+      DB_FILE: /data/kess-cloud.db
+      DATA_DIR: /data
+      TRUST_PROXY: "1"
+    volumes:
+      - kess-data:/data
+    expose:
+      - "8787"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/api/auth/me"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    env_file: ../.env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  kess-data:
+  caddy-data:
+  caddy-config:

@@ -1,6 +1,7 @@
 // Public endpoints used by hosted / exported client sites. No auth, CORS open, rate limited.
 import { HttpError, rateLimiter, clientIp, send } from '../lib/http.js';
 import { notify, logActivity } from '../lib/services.js';
+import { getSettings } from '../db.js';
 
 const formLimit = rateLimiter({ windowMs: 10 * 60_000, max: 8 });
 const hitLimit = rateLimiter({ windowMs: 60_000, max: 120 });
@@ -27,6 +28,17 @@ export default function register(r) {
       logActivity(ctx.db, { client_id: site.client_id, site_id: site.id, action: 'lead.received', detail: data.email });
     }
     return { ok: true, id };
+  });
+
+  // Caddy on-demand TLS asks this before issuing a certificate for a hostname.
+  // 200 only for the platform's own host and client domains (with or without www).
+  r.get('/api/public/tls-check', async (ctx) => {
+    const d = String(ctx.query.get('domain') || '').toLowerCase().replace(/\.$/, '');
+    const platform = [getSettings(ctx.db).public_base_url, process.env.PUBLIC_URL].map((u) => { try { return new URL(u).hostname; } catch { return null; } });
+    const bare = d.replace(/^www\./, '');
+    const ok = d && (platform.includes(d) || ctx.db.get('SELECT 1 FROM sites WHERE domain = ? OR domain = ?', d, bare));
+    if (!ok) throw new HttpError(404, 'Unknown domain');
+    return { ok: true };
   });
 
   // Cookieless page-view counter: aggregates per day/path, stores no IP or user id.

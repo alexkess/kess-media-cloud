@@ -1,0 +1,26 @@
+# Caddy gets and renews HTTPS certificates automatically (Let's Encrypt).
+# KESS_DOMAIN = the address of Kess Cloud itself, e.g. cloud.kess.media
+# ACME_EMAIL  = where Let's Encrypt sends certificate expiry warnings
+{
+	email {$ACME_EMAIL}
+	# Client domains get a certificate the first time someone visits them,
+	# but only if Kess Cloud confirms the domain belongs to one of your sites.
+	on_demand_tls {
+		ask http://app:8787/api/public/tls-check
+	}
+}
+
+# Kess Cloud itself
+{$KESS_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:8787
+}
+
+# Every client domain pointed at this server
+https:// {
+	tls {
+		on_demand
+	}
+	encode zstd gzip
+	reverse_proxy app:8787
+}

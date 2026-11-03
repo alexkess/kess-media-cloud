@@ -75,6 +75,10 @@ npm start
 
 On first start, if there is no owner account, it creates one from `KESS_OWNER_EMAIL` / `KESS_OWNER_PASSWORD`, or prints a temporary password.
 
+### Putting it online
+
+See **[deploy/README.md](deploy/README.md)**. One Sydney server, a setup script, and Caddy for automatic HTTPS on Kess Cloud and every client domain.
+
 ### Docker
 
 ```bash
@@ -93,7 +97,7 @@ It runs on any host that gives you a persistent volume: Fly.io, Railway, Render,
 npm test
 ```
 
-23 tests. They cover: auth and the CSRF guard; client data isolation (no internal notes, hour estimates, draft invoices or other clients' sites); the client edit lock; the approve and request-changes flows; quotes; the public form, honeypot and analytics; custom-domain hosting with HTML escaping; tarball validity of the Astro export; estimate rounding and rate secrecy; care-invoice de-duplication and GST maths; the asset type allowlist and sandbox headers; TOTP against the RFC 4226/6238 test vectors and the full two-factor login; password reset not bypassing two-factor; forgot-password privacy; email opt-out; Stripe signature checks (wrong secret, replay, amount mismatch, duplicate delivery); backup restore round-trip; S3 signing against the AWS documented example; weekly reminders; once-a-month reports; report access control.
+24 tests. They cover: auth and the CSRF guard; client data isolation (no internal notes, hour estimates, draft invoices or other clients' sites); the client edit lock; the approve and request-changes flows; quotes; the public form, honeypot and analytics; custom-domain hosting with HTML escaping; tarball validity of the Astro export; estimate rounding and rate secrecy; care-invoice de-duplication and GST maths; the asset type allowlist and sandbox headers; TOTP against the RFC 4226/6238 test vectors and the full two-factor login; password reset not bypassing two-factor; forgot-password privacy; email opt-out; Stripe signature checks (wrong secret, replay, amount mismatch, duplicate delivery); backup restore round-trip; S3 signing against the AWS documented example; weekly reminders; once-a-month reports; report access control; the TLS check that stops certificates being issued for domains that aren't yours.
 
 ## Layout
 
