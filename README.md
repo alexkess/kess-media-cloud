@@ -4,6 +4,15 @@ The Kess Media platform for building, hosting and caring for client websites, wi
 
 One Node app, no external services. SQLite holds the data, and the app itself hosts the client sites.
 
+## Try it in your browser (nothing to install)
+
+1. Open https://codespaces.new/alexkess/kess-media-cloud while signed in to GitHub (pick the branch if asked).
+2. Click **Create codespace**. It takes a minute or two to start.
+3. Kess Cloud starts by itself and opens in a new tab. If the tab doesn't open, go to the **Ports** tab at the bottom and click the globe icon next to port 8787.
+4. Sign in with `alex@kess.media` / `kessmedia-demo-2026` (agency) or `sam@harbourphysio.example` / `client-demo-2026` (client).
+
+Codespaces is free up to a monthly allowance on personal GitHub accounts. Stop it from github.com/codespaces when you're done; it also stops by itself after 30 minutes idle.
+
 ## Quick start on your computer
 
 1. Install **Node.js 22 LTS or newer** from https://nodejs.org. Check it with `node -v` (it should print v22.13 or higher).
