@@ -6,6 +6,7 @@ import { openDb } from './db.js';
 import { hashPassword } from './lib/auth.js';
 import { createSiteFromTemplate } from './api/sites.js';
 import { createVersion, publishVersion, nextInvoiceNumber, addDays } from './lib/services.js';
+import { seedStudioDemo } from './studio-seed.js';
 
 export function ensurePlans(db) {
   if (db.get('SELECT COUNT(*) n FROM plans').n) return;
@@ -98,6 +99,7 @@ export function seedDemo(db, { ownerEmail = 'alex@kess.media', ownerPassword = '
   }), owner.id);
 
   db.run("INSERT INTO activity (user_id, client_id, site_id, action, detail) VALUES (?, ?, ?, 'demo.seeded', 'Demo data loaded')", owner.id, c1, s1);
+  seedStudioDemo(db, { owner });
   return { owner, clientUser };
 }
 
@@ -105,5 +107,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
   const db = openDb(process.env.DB_FILE || join(root, 'data', 'kess-cloud.db'));
   seedDemo(db, { ownerEmail: process.env.KESS_OWNER_EMAIL || 'alex@kess.media', ownerPassword: process.env.KESS_OWNER_PASSWORD || 'kessmedia-demo-2026' });
-  console.log('Demo data loaded.\n  Agency: alex@kess.media / kessmedia-demo-2026 (unless KESS_OWNER_* set)\n  Client: sam@harbourphysio.example / client-demo-2026');
+  console.log('Demo data loaded.\n  Agency: alex@kess.media / kessmedia-demo-2026 (unless KESS_OWNER_* set)\n  Client: sam@harbourphysio.example / client-demo-2026\n  Staff:  georgia@kess.media / georgia-demo-2026');
 }

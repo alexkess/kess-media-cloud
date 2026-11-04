@@ -33,6 +33,13 @@ export async function settings(el) {
           <p class="muted small" style="margin:0">${isAgency() ? 'New requests, client approvals, payments, enquiries and downtime alerts.' : 'New versions to approve, replies to your requests, invoices, website enquiries and your monthly report.'}</p>
           <div class="row between" style="border-top:1px solid var(--line);padding-top:12px"><span><strong>Two-factor sign-in</strong> ${ok(me.totp_enabled, 'on', 'off')}<div class="muted small">A 6-digit code from an authenticator app each time you sign in.</div></span>
             ${me.totp_enabled ? html`<button class="btn sm" id="tfa-off">Turn off</button>` : html`<button class="btn sm primary" id="tfa-on">Set up</button>`}</div></div>
+        ${isAgency() ? html`<form class="card form" id="sending"><h2>Sending emails as you</h2>
+          <p class="muted small" style="margin:0">Quotes, agreements, invoices and reminders for your shoots go out under your name, and clients' replies come straight to you.</p>
+          <div class="two">${field('Your name on emails', 'send_as_name', { value: me.send_as_name, placeholder: me.name })}${field('Your email address', 'send_as_email', { type: 'email', value: me.send_as_email, placeholder: me.email })}</div>
+          ${field('Signature', 'email_signature', { type: 'textarea', rows: 3, value: me.email_signature, placeholder: `${me.name}\nKess Media\n0400 000 000` })}
+          <div class="callout small"><strong>Clients will see:</strong> <span class="mono">${me.from_preview}</span>${me.reply_to ? html`<br><strong>Replies go to:</strong> <span class="mono">${me.reply_to}</span>` : ''}
+            ${me.verified ? html`<br>✓ Sent from your own address (domain verified).` : html`<br>Sent from the shared address with your name. To send from your own address, verify its domain with the email provider and add it to <span class="mono">MAIL_VERIFIED_DOMAINS</span>${me.verified_domains.length ? ` (verified now: ${me.verified_domains.join(', ')})` : ''}.`}</div>
+          <div class="row end"><button class="btn primary">Save</button></div></form>` : ''}
         <form class="card form" id="pw"><h2>Change password</h2>${field('Current password', 'current', { type: 'password', required: true, attrs: 'autocomplete="current-password"' })}${field('New password', 'next', { type: 'password', required: true, hint: 'at least 10 characters', attrs: 'minlength="10" autocomplete="new-password"' })}<div class="row end"><button class="btn primary">Update password</button></div></form>
         ${isAgency() ? html`<div class="card"><div class="card-head"><h2>Team</h2>${owner ? html`<button class="btn sm" id="inv">+ Invite</button>` : ''}</div>
           ${team.map((u) => html`<div class="row between" style="padding:6px 0;border-bottom:1px solid #f1efea"><span><strong>${u.name}</strong> <span class="pill grey">${u.role}</span><div class="muted small">${u.email} · ${u.pending ? 'invite pending' : u.last_login_at ? `active ${ago(u.last_login_at)}` : 'never signed in'}</div></span>${owner && u.id !== state.user.id ? html`<button class="btn sm" data-reset="${u.id}">Link</button>` : ''}</div>`)}</div>` : ''}
@@ -90,6 +97,10 @@ export async function settings(el) {
     body.email_reminders = e.target.elements.email_reminders.checked ? '1' : '0';
     if ('internal_rate' in body) { body.internal_rate_cents = String(dollarsToCents(body.internal_rate) || 0); delete body.internal_rate; }
     try { const r = await api('/api/settings', { method: 'PATCH', body }); state.agencyName = r.agency_name; toast('Settings saved'); } catch (err) { fail(err); }
+  });
+  el.querySelector('#sending')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try { await api('/api/auth/prefs', { method: 'PATCH', body: Object.fromEntries(new FormData(e.target)) }); toast('Saved'); settings(el); } catch (err) { fail(err); }
   });
   el.querySelector('#pw').addEventListener('submit', async (e) => {
     e.preventDefault();

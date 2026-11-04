@@ -52,6 +52,18 @@ There's nothing to `npm install`. Data is saved in the `data/` folder; delete th
 - **Overdue reminders:** clients get a friendly reminder once a week while an invoice is overdue.
 - **Two-factor sign-in** (authenticator app) for anyone, plus "Forgot password" by email. A reset link signs out every session and can't be used to skip two-factor.
 
+### Photo + video studio (replaces Studio Ninja)
+- **Enquiries:** a hosted enquiry form (`/enquiry`, embeddable on kess.media) creates the client and a shoot, notifies the team and sends a friendly reply.
+- **Quotes from packages**, plus custom lines and optional add-ons the client can tick.
+- **Agreements with e-signature:** templates with merge fields; the client signs with a finger or mouse on their booking page. The record keeps their name, time, IP address, browser and a fingerprint of the exact text. Signed agreements never change.
+- **Payment plans:** e.g. 50% deposit on booking and the balance 14 days before the shoot. Invoices are created on booking, emailed on their date with a "pay by card" link (Stripe) or bank details, reminded 3 days before due and weekly when overdue. Moving the shoot date moves them.
+- **Workflows:** automatic client emails and team tasks relative to the booking or shoot date (questionnaire, confirm details, back up cards, deliver, ask for a review).
+- **Questionnaires** the client fills in on their booking page, with save-for-later.
+- **Calendar** with holds and bookings, plus a private subscription link for Google, Apple or Outlook Calendar.
+- **Delivery** via your existing providers: paste a Dropbox, Google Drive, Picflow, Vimeo, Frame.io, Pic-Time, Pixieset, WeTransfer or YouTube link; Vimeo and YouTube play right on the client's page.
+- **Each team member sends as themselves:** quotes, agreements and invoices for Georgia's shoots come from Georgia and replies go to her inbox (Settings > Sending emails as you).
+- **Clients need no account:** everything happens on a private booking page (`/j/<link>`) and invoice page (`/i/<link>`).
+
 ### For clients (portal)
 - See their websites, live status, uptime and SSL.
 - **Approve new versions** or request changes in plain words.
@@ -76,6 +88,7 @@ npm run dev
 Opens on http://localhost:8787 with demo data:
 - Agency: `alex@kess.media` / `kessmedia-demo-2026`
 - Client: `sam@harbourphysio.example` / `client-demo-2026`
+- Staff (studio): `georgia@kess.media` / `georgia-demo-2026`
 
 For production:
 
@@ -108,7 +121,7 @@ It runs on any host that gives you a persistent volume: Fly.io, Railway, Render,
 npm test
 ```
 
-30 tests. They cover: auth and the CSRF guard; client data isolation (no internal notes, hour estimates, draft invoices or other clients' sites); the client edit lock; the approve and request-changes flows; quotes; the public form, honeypot and analytics; custom-domain hosting with HTML escaping; tarball validity of the Astro export; estimate rounding and rate secrecy; care-invoice de-duplication and GST maths; the asset type allowlist and sandbox headers; TOTP against the RFC 4226/6238 test vectors and the full two-factor login; password reset not bypassing two-factor; forgot-password privacy; email opt-out; Stripe signature checks (wrong secret, replay, amount mismatch, duplicate delivery); backup restore round-trip; S3 signing against the AWS documented example; weekly reminders; once-a-month reports; report access control; the TLS check that stops certificates being issued for domains that aren't yours; feedback permissions, input cleaning, review link expiry and revocation, guest privacy.
+37 tests. They cover: auth and the CSRF guard; client data isolation (no internal notes, hour estimates, draft invoices or other clients' sites); the client edit lock; the approve and request-changes flows; quotes; the public form, honeypot and analytics; custom-domain hosting with HTML escaping; tarball validity of the Astro export; estimate rounding and rate secrecy; care-invoice de-duplication and GST maths; the asset type allowlist and sandbox headers; TOTP against the RFC 4226/6238 test vectors and the full two-factor login; password reset not bypassing two-factor; forgot-password privacy; email opt-out; Stripe signature checks (wrong secret, replay, amount mismatch, duplicate delivery); backup restore round-trip; S3 signing against the AWS documented example; weekly reminders; once-a-month reports; report access control; the TLS check that stops certificates being issued for domains that aren't yours; feedback permissions, input cleaning, review link expiry and revocation, guest privacy; studio payment plan maths, sending as staff, the full quote → sign → book → invoice flow, scheduled invoices and reminders, workflow emails, calendar feed, enquiries.
 
 ## Layout
 
@@ -129,6 +142,7 @@ All optional, set as environment variables (see `.env.example`). Settings > Inte
 | Feature | Variables | Where to get them |
 |---|---|---|
 | Email | `MAIL_PROVIDER` (`resend` or `postmark`), `MAIL_API_KEY`, `MAIL_FROM` | resend.com or postmarkapp.com, after verifying your sending domain |
+| Staff send from their own address | `MAIL_VERIFIED_DOMAINS` (e.g. `kess.media`) | Verify the domain with the email provider; then georgia@kess.media sends as herself |
 | Card payments | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Stripe dashboard > Developers. Add the webhook URL shown in Settings |
 | Off-site backups | `BACKUP_S3_ENDPOINT`, `BACKUP_S3_BUCKET`, `BACKUP_S3_KEY_ID`, `BACKUP_S3_SECRET` | Cloudflare R2 > Manage API tokens (S3 compatible) |
 

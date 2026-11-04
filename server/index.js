@@ -8,6 +8,7 @@ const { hashPassword, randomToken } = await import('./lib/auth.js');
 const { ensurePlans, seedDemo } = await import('./seed.js');
 const { startMonitor } = await import('./lib/monitor.js');
 const { startJobs } = await import('./lib/jobs.js');
+const { ensureStudioDefaults } = await import('./studio-seed.js');
 const { join, dirname } = await import('node:path');
 const { fileURLToPath } = await import('node:url');
 
@@ -15,6 +16,7 @@ const PORT = Number(process.env.PORT || 8787);
 const { server, db } = createApp();
 
 ensurePlans(db);
+ensureStudioDefaults(db);
 if (process.env.DEMO === '1' || process.argv.includes('--demo')) seedDemo(db, { ownerEmail: process.env.KESS_OWNER_EMAIL, ownerPassword: process.env.KESS_OWNER_PASSWORD });
 
 if (!db.get("SELECT 1 FROM users WHERE role = 'owner'")) {

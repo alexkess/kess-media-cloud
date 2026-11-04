@@ -171,6 +171,65 @@ CREATE TABLE IF NOT EXISTS review_links (
   created_by INTEGER, created_at TEXT NOT NULL DEFAULT (datetime('now')), expires_at TEXT, revoked INTEGER NOT NULL DEFAULT 0
 );
 
+-- ---------- Studio (photo + video jobs) ----------
+CREATE TABLE IF NOT EXISTS packages (
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'photo', description TEXT,
+  price_cents INTEGER NOT NULL DEFAULT 0, items TEXT NOT NULL DEFAULT '[]', active INTEGER NOT NULL DEFAULT 1, sort INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS contract_templates (
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL, body TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS payment_plans (
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL, steps TEXT NOT NULL DEFAULT '[]', active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS workflows (
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL, steps TEXT NOT NULL DEFAULT '[]', active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS questionnaires (
+  id INTEGER PRIMARY KEY, name TEXT NOT NULL, intro TEXT, questions TEXT NOT NULL DEFAULT '[]', active INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS jobs (
+  id INTEGER PRIMARY KEY, client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  title TEXT NOT NULL, category TEXT NOT NULL DEFAULT 'photo', status TEXT NOT NULL DEFAULT 'enquiry',
+  shoot_date TEXT, start_time TEXT, end_time TEXT, location TEXT, notes TEXT, source TEXT,
+  owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  contract_template_id INTEGER, payment_plan_id INTEGER, workflow_id INTEGER, questionnaire_id INTEGER,
+  token TEXT NOT NULL UNIQUE, quote_sent_at TEXT, accepted_at TEXT, booked_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status, shoot_date);
+CREATE TABLE IF NOT EXISTS job_lines (
+  id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  package_id INTEGER, description TEXT NOT NULL, details TEXT, qty REAL NOT NULL DEFAULT 1, unit_cents INTEGER NOT NULL DEFAULT 0,
+  optional INTEGER NOT NULL DEFAULT 0, selected INTEGER NOT NULL DEFAULT 1, sort INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS contracts (
+  id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  title TEXT NOT NULL, body TEXT NOT NULL, body_hash TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
+  agency_signer TEXT, signed_name TEXT, signature TEXT, signed_at TEXT, signed_ip TEXT, signed_ua TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS job_steps (
+  id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  name TEXT NOT NULL, action TEXT NOT NULL DEFAULT 'task', due_date TEXT, subject TEXT, body TEXT,
+  attach TEXT, status TEXT NOT NULL DEFAULT 'pending', done_at TEXT, sort INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_job_steps_due ON job_steps(status, due_date);
+CREATE TABLE IF NOT EXISTS questionnaire_responses (
+  id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  questionnaire_id INTEGER, questions TEXT NOT NULL, answers TEXT NOT NULL DEFAULT '{}',
+  submitted_at TEXT, updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS deliveries (
+  id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL, url TEXT NOT NULL, label TEXT, note TEXT, created_by INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS job_events (
+  id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  who TEXT, action TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS outbox (
   id INTEGER PRIMARY KEY, to_addr TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL,
   provider TEXT NOT NULL, status TEXT NOT NULL, error TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -196,8 +255,11 @@ export function openDb(file) {
 
 // Additive column migrations for databases created by earlier versions.
 const COLUMNS = {
-  users: { email_notify: 'INTEGER NOT NULL DEFAULT 1', totp_secret: 'TEXT', totp_pending: 'TEXT', totp_enabled: 'INTEGER NOT NULL DEFAULT 0' },
-  invoices: { stripe_session_id: 'TEXT', reminded_at: 'TEXT', paid_via: 'TEXT' },
+  users: { email_notify: 'INTEGER NOT NULL DEFAULT 1', totp_secret: 'TEXT', totp_pending: 'TEXT', totp_enabled: 'INTEGER NOT NULL DEFAULT 0',
+    send_as_email: 'TEXT', send_as_name: 'TEXT', email_signature: 'TEXT', cal_token: 'TEXT' },
+  invoices: { stripe_session_id: 'TEXT', reminded_at: 'TEXT', paid_via: 'TEXT',
+    job_id: 'INTEGER', owner_id: 'INTEGER', send_on: 'TEXT', public_token: 'TEXT', sent_at: 'TEXT', due_reminded_at: 'TEXT', plan_label: 'TEXT' },
+  outbox: { from_addr: 'TEXT', reply_to: 'TEXT' },
 };
 function migrate(db) {
   for (const [table, cols] of Object.entries(COLUMNS)) {
@@ -242,6 +304,8 @@ export const DEFAULT_SETTINGS = {
   webhook_url: '',
   public_base_url: '',
   email_reports: '1',
+  studio_terms_days: '7',
+  studio_owner_id: '',
   email_reminders: '1',
 };
 

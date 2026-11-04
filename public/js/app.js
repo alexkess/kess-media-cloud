@@ -17,6 +17,10 @@ const ROUTES = [
   ['/plans', () => import('./views/billing.js').then((m) => m.plans)],
   ['/estimates', () => import('./views/estimates.js').then((m) => m.list), { agency: true }],
   ['/estimates/:id', () => import('./views/estimates.js').then((m) => m.detail), { agency: true }],
+  ['/studio', () => import('./views/studio.js').then((m) => m.overview), { agency: true }],
+  ['/studio/calendar', () => import('./views/studio.js').then((m) => m.calendar), { agency: true }],
+  ['/studio/setup', () => import('./views/studio-setup.js').then((m) => m.default), { agency: true }],
+  ['/studio/jobs/:id', () => import('./views/job.js').then((m) => m.default), { agency: true }],
   ['/files', () => import('./views/files.js').then((m) => m.default)],
   ['/activity', () => import('./views/settings.js').then((m) => m.activity), { agency: true }],
   ['/settings', () => import('./views/settings.js').then((m) => m.settings)],
@@ -35,6 +39,7 @@ function matchRoute(path) {
 function navItems() {
   if (isAgency()) return [
     ['/', 'Dashboard', '◧'], ['/clients', 'Clients', '◎'], ['/sites', 'Sites', '▦'], ['/requests', 'Requests', '✎'],
+    ['sep', 'Photo + video'], ['/studio', 'Shoots', '◉'], ['/studio/calendar', 'Calendar', '▤'], ['/studio/setup', 'Studio setup', '✦'],
     ['sep', 'Money'], ['/invoices', 'Invoices', '$'], ['/plans', 'Care plans', '♡'], ['/estimates', 'Estimates', '≈'],
     ['sep', 'Studio'], ['/files', 'Files', '⬒'], ['/activity', 'Activity', '↻'], ['/settings', 'Settings', '⚙'],
   ];
@@ -105,10 +110,9 @@ async function route() {
   else {
     if (!state.shell) { shell(); state.shell = true; }
     el = document.getElementById('view');
-    document.querySelectorAll('#nav a').forEach((a) => {
-      const p = a.dataset.path;
-      a.classList.toggle('on', p === '/' ? path === '/' : path === p || path.startsWith(p + '/'));
-    });
+    const links = [...document.querySelectorAll('#nav a')];
+    const best = links.map((a) => a.dataset.path).filter((p) => (p === '/' ? path === '/' : path === p || path.startsWith(p + '/'))).sort((a, b) => b.length - a.length)[0];
+    links.forEach((a) => a.classList.toggle('on', a.dataset.path === best));
     document.getElementById('side')?.classList.remove('open');
   }
   try {

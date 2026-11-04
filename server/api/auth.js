@@ -1,7 +1,7 @@
 import { HttpError, bad, rateLimiter, clientIp } from '../lib/http.js';
 import { createSession, sessionCookie, clearCookie, verifyPassword, hashPassword, sha256, requireUser, isAgency, randomToken } from '../lib/auth.js';
 import { newSecret, verifyTotp, otpauthUri } from '../lib/totp.js';
-import { sendMail, appUrl } from '../lib/mail.js';
+import { sendMail, appUrl, senderFor, verifiedDomains } from '../lib/mail.js';
 
 const loginLimit = rateLimiter({ windowMs: 15 * 60_000, max: 20 });
 const forgotLimit = rateLimiter({ windowMs: 60 * 60_000, max: 5 });
@@ -31,8 +31,9 @@ export default function register(r) {
     if (!ctx.user) return { user: null };
     const { sessionHash, ...user } = ctx.user;
     const client = user.client_id ? ctx.db.get('SELECT id, name FROM clients WHERE id = ?', user.client_id) : null;
-    const prefs = ctx.db.get('SELECT email_notify, totp_enabled FROM users WHERE id = ?', user.id);
-    return { user: { ...user, agency: isAgency(user), email_notify: !!prefs.email_notify, totp_enabled: !!prefs.totp_enabled }, client, agency_name: ctx.settings().agency_name };
+    const prefs = ctx.db.get('SELECT * FROM users WHERE id = ?', user.id);
+    const sending = isAgency(user) ? (() => { const snd = senderFor(ctx.db, prefs); return { send_as_email: prefs.send_as_email || '', send_as_name: prefs.send_as_name || '', email_signature: prefs.email_signature || '', from_preview: snd.from, reply_to: snd.replyTo, verified: !!snd.verified, verified_domains: verifiedDomains() }; })() : {};
+    return { user: { ...user, agency: isAgency(user), email_notify: !!prefs.email_notify, totp_enabled: !!prefs.totp_enabled, ...sending }, client, agency_name: ctx.settings().agency_name };
   });
 
   r.patch('/api/auth/prefs', async (ctx) => {
@@ -40,6 +41,15 @@ export default function register(r) {
     const b = await ctx.body();
     if ('email_notify' in b) ctx.db.run('UPDATE users SET email_notify = ? WHERE id = ?', b.email_notify ? 1 : 0, ctx.user.id);
     if ('name' in b && String(b.name).trim()) ctx.db.run('UPDATE users SET name = ? WHERE id = ?', String(b.name).trim().slice(0, 100), ctx.user.id);
+    if (isAgency(ctx.user)) {
+      if ('send_as_email' in b) {
+        const e = String(b.send_as_email || '').trim().toLowerCase();
+        if (e && !/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(e)) throw bad('That email address looks wrong');
+        ctx.db.run('UPDATE users SET send_as_email = ? WHERE id = ?', e || null, ctx.user.id);
+      }
+      if ('send_as_name' in b) ctx.db.run('UPDATE users SET send_as_name = ? WHERE id = ?', String(b.send_as_name || '').replace(/[<>"]/g, '').trim().slice(0, 80) || null, ctx.user.id);
+      if ('email_signature' in b) ctx.db.run('UPDATE users SET email_signature = ? WHERE id = ?', String(b.email_signature || '').slice(0, 1000) || null, ctx.user.id);
+    }
     return { ok: true };
   });
 

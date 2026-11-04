@@ -28,4 +28,5 @@ npm test       # node:test suite, must stay green
 - `server/app.js` HTTP server, site hosting (`/s/<slug>/` and custom domains), previews
 - `server/api/*.js` REST API by area; `server/lib/*.js` auth, services, mail, stripe, backups, jobs, reports, monitor, export
 - `public/js/views/*.js` one module per screen; `public/js/lib.js` shared helpers (`html` tagged template escapes by default)
+- `server/lib/studio.js` + `server/api/studio*.js` + `server/lib/studio-pages.js` photo/video studio (jobs, quotes, contracts, payment plans, workflows, client booking pages)
 - `test/*.test.js` API and unit tests
