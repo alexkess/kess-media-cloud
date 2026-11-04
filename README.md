@@ -39,6 +39,7 @@ There's nothing to `npm install`. Data is saved in the `data/` folder; delete th
 - **Versions and approvals:** "Send for approval" snapshots the draft and notifies the client. The client approves it (which publishes) or requests changes (which opens a feedback ticket). You can publish directly, roll back to any version, or restore a version into the draft.
 - **Hosting:** published sites are served at `/s/<slug>/` and on the client's own domain (point DNS at the server). `sitemap.xml`, `robots.txt`, canonical tags, Open Graph tags and schema.org JSON-LD are generated automatically.
 - **Astro + Sanity export:** download any version as an Astro project with a Sanity Studio schema and an import script. It uses the same renderer as the platform, so what the client approved is what Astro builds, and forms keep posting back to Kess Cloud.
+- **Live site feedback:** open any draft, version or live page in comment mode. Pin a comment to anything, highlight text, or circle and draw on the page. Pins and highlights stay attached to the right content on desktop and mobile. Threads have replies and resolve. Turn any comment into a request with one click. **Review links** let people without an account (a client's manager or board) view the draft or live site and comment by name; links expire or can be turned off.
 - **SEO check:** per-page score for titles, meta descriptions, H1s, image alt text, unsafe links and thin content.
 - **Requests:** a kanban board of change requests, bugs and questions. Each one has internal notes, time logging, hour estimates (internal), and quotes (ex GST) the client can approve or decline.
 - **Billing:** tax invoices with GST, a printable branded PDF view, draft → sent → paid/void, and one-click monthly care-plan invoices. Approved, billable request quotes are added to those invoices automatically.
@@ -54,6 +55,7 @@ There's nothing to `npm install`. Data is saved in the `data/` folder; delete th
 ### For clients (portal)
 - See their websites, live status, uptime and SSL.
 - **Approve new versions** or request changes in plain words.
+- **Mark up the site:** pin comments, highlight text and draw on pages, and share review links with colleagues.
 - **Edit their own content** (text and images only; the structure stays locked) and send edits to Kess Media for review.
 - **Enquiries inbox:** contact-form messages from their site, with reply, archive, spam and CSV export.
 - **Analytics** without cookies: page views, top pages, referrers and enquiry rate. No consent banner needed.
@@ -106,7 +108,7 @@ It runs on any host that gives you a persistent volume: Fly.io, Railway, Render,
 npm test
 ```
 
-24 tests. They cover: auth and the CSRF guard; client data isolation (no internal notes, hour estimates, draft invoices or other clients' sites); the client edit lock; the approve and request-changes flows; quotes; the public form, honeypot and analytics; custom-domain hosting with HTML escaping; tarball validity of the Astro export; estimate rounding and rate secrecy; care-invoice de-duplication and GST maths; the asset type allowlist and sandbox headers; TOTP against the RFC 4226/6238 test vectors and the full two-factor login; password reset not bypassing two-factor; forgot-password privacy; email opt-out; Stripe signature checks (wrong secret, replay, amount mismatch, duplicate delivery); backup restore round-trip; S3 signing against the AWS documented example; weekly reminders; once-a-month reports; report access control; the TLS check that stops certificates being issued for domains that aren't yours.
+30 tests. They cover: auth and the CSRF guard; client data isolation (no internal notes, hour estimates, draft invoices or other clients' sites); the client edit lock; the approve and request-changes flows; quotes; the public form, honeypot and analytics; custom-domain hosting with HTML escaping; tarball validity of the Astro export; estimate rounding and rate secrecy; care-invoice de-duplication and GST maths; the asset type allowlist and sandbox headers; TOTP against the RFC 4226/6238 test vectors and the full two-factor login; password reset not bypassing two-factor; forgot-password privacy; email opt-out; Stripe signature checks (wrong secret, replay, amount mismatch, duplicate delivery); backup restore round-trip; S3 signing against the AWS documented example; weekly reminders; once-a-month reports; report access control; the TLS check that stops certificates being issued for domains that aren't yours; feedback permissions, input cleaning, review link expiry and revocation, guest privacy.
 
 ## Layout
 

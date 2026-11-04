@@ -39,8 +39,8 @@ async function newSite(clientId) {
   } catch (e) { fail(e); }
 }
 
-const TABS_AGENCY = [['', 'Overview'], ['pages', 'Pages'], ['design', 'Design'], ['settings', 'Settings'], ['versions', 'Versions'], ['seo', 'SEO check'], ['analytics', 'Analytics'], ['report', 'Monthly report'], ['leads', 'Enquiries'], ['uptime', 'Uptime']];
-const TABS_CLIENT = [['', 'Overview'], ['pages', 'Edit content'], ['versions', 'Versions'], ['analytics', 'Analytics'], ['report', 'Monthly report'], ['leads', 'Enquiries'], ['seo', 'Health'], ['uptime', 'Uptime']];
+const TABS_AGENCY = [['', 'Overview'], ['pages', 'Pages'], ['design', 'Design'], ['settings', 'Settings'], ['versions', 'Versions'], ['seo', 'SEO check'], ['analytics', 'Analytics'], ['report', 'Monthly report'], ['feedback', 'Feedback'], ['leads', 'Enquiries'], ['uptime', 'Uptime']];
+const TABS_CLIENT = [['', 'Overview'], ['pages', 'Edit content'], ['feedback', 'Feedback'], ['versions', 'Versions'], ['analytics', 'Analytics'], ['report', 'Monthly report'], ['leads', 'Enquiries'], ['seo', 'Health'], ['uptime', 'Uptime']];
 
 export async function detail(el, { id, tab = '', pageId }, query = new URLSearchParams()) {
   const site = await api(`/api/sites/${id}`);
@@ -50,13 +50,13 @@ export async function detail(el, { id, tab = '', pageId }, query = new URLSearch
   const pending = site.versions.filter((v) => v.status === 'pending').length;
   render(el, html`<div class="crumbs"><a href="#/sites">${agency ? 'Sites' : 'My websites'}</a> / ${agency ? html`<a href="#/clients/${site.client.id}">${site.client.name}</a> /` : ''}</div>
     <div class="page-head"><div><h1>${site.name}</h1><p>${pill(site.stage)} ${site.published_version_id ? html`· live <a href="${site.urls.domain || site.urls.hosted}" target="_blank" rel="noopener">${site.domain || `/s/${site.slug}/`} ↗</a>` : '· not published yet'}</p></div>
-      <div class="row"><a class="btn" href="${site.urls.preview}" target="_blank" rel="noopener">Preview draft ↗</a>${agency ? html`<button class="btn" id="review">Send for approval</button><button class="btn primary" id="publish">Publish now</button>` : ''}</div></div>
+      <div class="row"><a class="btn" href="${site.urls.preview}" target="_blank" rel="noopener">Preview draft ↗</a><a class="btn" href="${site.urls.preview}?feedback=1" target="_blank" rel="noopener" title="Pin comments, highlight text or draw on the page">💬 Comment on draft ↗</a>${agency ? html`<button class="btn" id="review">Send for approval</button><button class="btn primary" id="publish">Publish now</button>` : ''}</div></div>
     <nav class="tabs">${tabs.map(([t, l]) => html`<a href="#/sites/${id}${t ? '/' + t : ''}" class="${t === tab ? 'on' : ''}">${l}${t === 'versions' && pending ? html`<span class="count">${pending}</span>` : ''}</a>`)}</nav>
     <div id="tab"></div>`);
   el.querySelector('#review')?.addEventListener('click', () => sendVersion(site, 'review', el));
   el.querySelector('#publish')?.addEventListener('click', () => sendVersion(site, 'publish', el));
   const t = el.querySelector('#tab');
-  const views = { '': overview, pages: (t, s) => import('./editor.js').then((m) => m.default(t, s, pageId)), design, settings, versions, seo, analytics, report: (t, s) => report(t, s, query.get('month')), leads, uptime };
+  const views = { '': overview, pages: (t, s) => import('./editor.js').then((m) => m.default(t, s, pageId)), design, settings, versions, seo, analytics, report: (t, s) => report(t, s, query.get('month')), feedback: (t, s) => import('./feedback.js').then((m) => m.default(t, s)), leads, uptime };
   await (views[tab] || overview)(t, site);
 }
 
@@ -176,7 +176,7 @@ async function versions(t, site) {
     ${rows.map((v) => html`<tr><td><strong>v${v.number}</strong><div class="muted small">${date(v.created_at)}</div></td>
       <td>${pill(v.status, v.status === 'changes_requested' ? 'changes requested' : v.status === 'published' ? 'live' : v.status)}${v.review_note ? html`<div class="small muted pre" style="max-width:260px">“${v.review_note}” · ${v.reviewed_by_name}</div>` : ''}</td>
       <td class="small">${v.note || html`<span class="muted">—</span>`}</td><td class="small muted">${v.created_by_name || ''}</td>
-      <td class="right"><div class="row end"><a class="btn sm" href="/preview/${site.id}/?v=${v.number}" target="_blank" rel="noopener">Preview ↗</a>
+      <td class="right"><div class="row end"><a class="btn sm" href="/preview/${site.id}/?v=${v.number}" target="_blank" rel="noopener">Preview ↗</a><a class="btn sm" href="/preview/${site.id}/?v=${v.number}&feedback=1" target="_blank" rel="noopener" title="Pin comments or draw on this version">💬</a>
         ${v.status === 'pending' ? html`<button class="btn sm primary" data-approve="${v.id}">Approve${!agency && site.settings.autoPublishOnApproval !== false ? ' and go live' : ''}</button><button class="btn sm" data-changes="${v.id}">Request changes</button>` : ''}
         ${agency && !['published', 'pending'].includes(v.status) ? html`<button class="btn sm" data-pub="${v.id}" data-n="${v.number}">${v.status === 'superseded' ? 'Roll back to this' : 'Publish'}</button>` : ''}
         ${agency ? html`<button class="btn sm ghost" data-restore="${v.id}" data-n="${v.number}" title="Load into draft">↺ Draft</button>` : ''}</div></td></tr>`)}

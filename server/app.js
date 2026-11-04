@@ -14,6 +14,7 @@ import requests from './api/requests.js';
 import billing from './api/billing.js';
 import misc from './api/misc.js';
 import publicApi from './api/public.js';
+import feedback, { reviewLinkFor } from './api/feedback.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = join(ROOT, 'public');
@@ -25,6 +26,12 @@ const SECURITY_HEADERS = {
   'X-Frame-Options': 'SAMEORIGIN',
 };
 
+// Add the feedback overlay (public/feedback/overlay.js) to a rendered page.
+function withOverlay(page, cfg) {
+  const i = page.lastIndexOf('</body>');
+  return `${page.slice(0, i)}<script src="/feedback/overlay.js" data-config="${esc(JSON.stringify(cfg))}" defer></script>${page.slice(i)}`;
+}
+
 function notFoundPage(res, msg = 'Page not found') {
   html(res, 404, `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Not found</title><body style="font:16px system-ui;display:grid;place-items:center;min-height:90vh;color:#1a1a1a"><div style="text-align:center"><h1 style="font-size:64px;margin:0;color:#1E5C34">404</h1><p>${esc(msg)}</p></div></body>`);
 }
@@ -32,7 +39,7 @@ function notFoundPage(res, msg = 'Page not found') {
 export function createApp({ dbFile = process.env.DB_FILE || join(ROOT, 'data', 'kess-cloud.db'), dataDir = process.env.DATA_DIR || join(ROOT, 'data'), db: existingDb } = {}) {
   const db = existingDb || openDb(dbFile);
   const router = new Router();
-  for (const reg of [auth, clients, sites, requests, billing, misc, publicApi]) reg(router, { dataDir });
+  for (const reg of [auth, clients, sites, requests, billing, misc, publicApi, feedback]) reg(router, { dataDir });
 
   const platformHosts = () => {
     const s = getSettings(db);
@@ -106,17 +113,43 @@ export function createApp({ dbFile = process.env.DB_FILE || join(ROOT, 'data', '
       try { site = getSite(db, Number(m[1])); } catch { return notFoundPage(res); }
       if (!isAgency(ctx.user) && ctx.user.client_id !== site.client_id) return notFoundPage(res);
       const vnum = url.searchParams.get('v');
+      const feedbackOn = url.searchParams.get('feedback') === '1';
       let snap, label;
       if (vnum) {
         const v = db.get('SELECT snapshot, status FROM versions WHERE site_id = ? AND number = ?', site.id, Number(vnum));
         if (!v) return notFoundPage(res, 'Version not found');
         snap = j(v.snapshot, null); label = `Preview · v${vnum} (${v.status.replace('_', ' ')})`;
       } else { snap = buildSnapshot(db, site.id); label = 'Preview · draft (not live)'; }
-      const q = vnum ? `?v=${vnum}` : '';
-      const out = renderPage(snap, m[2] || '', { base: `/preview/${site.id}`, formAction: '#', preview: label });
+      const qs = new URLSearchParams();
+      if (vnum) qs.set('v', vnum);
+      if (feedbackOn) qs.set('feedback', '1');
+      const page = m[2] || '';
+      let out = renderPage(snap, page, { base: `/preview/${site.id}`, formAction: '#', preview: feedbackOn ? '' : label });
       if (!out) return notFoundPage(res);
-      // Keep internal links inside the same version preview.
-      return html(res, 200, q ? out.replace(new RegExp(`href="(/preview/${site.id}/[^"#?]*)"`, 'g'), `href="$1${q}"`) : out, { 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+      // Keep internal links inside the same preview mode.
+      if (qs.size) out = out.replace(new RegExp(`href="(/preview/${site.id}/[^"#?]*)"`, 'g'), `href="$1?${qs}"`);
+      if (feedbackOn) out = withOverlay(out, { api: `/api/sites/${site.id}`, mode: 'user', page, version: vnum ? `v${vnum}` : 'draft', label, agency: isAgency(ctx.user), me: ctx.user.name, userId: ctx.user.id, focus: Number(url.searchParams.get('fb')) || null });
+      return html(res, 200, out, { 'Cache-Control': 'no-store', ...SECURITY_HEADERS });
+    }
+
+    // 3b. Review links: anyone with the link can view (draft or live) and leave feedback.
+    m = path.match(/^\/review\/([A-Za-z0-9_-]{16,64})(?:\/(.*?))?\/?$/);
+    if (m && req.method === 'GET') {
+      let link;
+      try { link = reviewLinkFor(db, m[1]); } catch { return notFoundPage(res, 'This review link has expired or was turned off.'); }
+      if (!path.endsWith('/') && !m[2]) { res.writeHead(301, { Location: path + '/' }); return res.end(); }
+      const site = getSite(db, link.site_id);
+      let snap, version = 'draft';
+      if (link.target === 'live') {
+        const v = site.published_version_id && db.get('SELECT number, snapshot FROM versions WHERE id = ?', site.published_version_id);
+        if (!v) return notFoundPage(res, 'This site has not been published yet.');
+        snap = j(v.snapshot, null); version = `v${v.number}`;
+      } else snap = buildSnapshot(db, site.id);
+      const page = m[2] || '';
+      const out = renderPage(snap, page, { base: `/review/${link.token}`, formAction: '#', preview: '' });
+      if (!out) return notFoundPage(res);
+      return html(res, 200, withOverlay(out, { api: `/api/public/review/${link.token}`, mode: 'guest', page, version, label: `${site.name} · ${link.target === 'live' ? 'live site' : 'draft'}`, agency: false, focus: Number(url.searchParams.get('fb')) || null }),
+        { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex', ...SECURITY_HEADERS });
     }
 
     // 4. API + server-rendered routes

@@ -148,6 +148,29 @@ CREATE TABLE IF NOT EXISTS activity (
   detail TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS feedback (
+  id INTEGER PRIMARY KEY, site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+  page_slug TEXT NOT NULL, version TEXT NOT NULL DEFAULT 'draft', kind TEXT NOT NULL DEFAULT 'pin',
+  anchor TEXT NOT NULL DEFAULT '{}', shape TEXT NOT NULL DEFAULT '{}', viewport_w INTEGER,
+  body TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, guest_name TEXT, guest_email TEXT, review_link_id INTEGER,
+  request_id INTEGER REFERENCES requests(id) ON DELETE SET NULL,
+  resolved_by INTEGER, resolved_at TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_site ON feedback(site_id, page_slug, status);
+
+CREATE TABLE IF NOT EXISTS feedback_replies (
+  id INTEGER PRIMARY KEY, feedback_id INTEGER NOT NULL REFERENCES feedback(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, guest_name TEXT, body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS review_links (
+  id INTEGER PRIMARY KEY, site_id INTEGER NOT NULL REFERENCES sites(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE, label TEXT, target TEXT NOT NULL DEFAULT 'draft' CHECK (target IN ('draft','live')),
+  created_by INTEGER, created_at TEXT NOT NULL DEFAULT (datetime('now')), expires_at TEXT, revoked INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE IF NOT EXISTS outbox (
   id INTEGER PRIMARY KEY, to_addr TEXT NOT NULL, subject TEXT NOT NULL, body TEXT NOT NULL,
   provider TEXT NOT NULL, status TEXT NOT NULL, error TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))

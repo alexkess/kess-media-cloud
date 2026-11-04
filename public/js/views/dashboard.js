@@ -5,7 +5,7 @@ const ACTION_LABEL = {
   'version.approved': 'approved', 'version.changes_requested': 'requested changes', 'version.client_submitted': 'submitted edits',
   'request.created': 'opened request', 'request.updated': 'updated request', 'invoice.created': 'created invoice', 'invoice.sent': 'sent invoice',
   'invoice.paid': 'marked paid', 'invoice.generated': 'generated care invoice', 'lead.received': 'new enquiry', 'client.created': 'added client',
-  'page.client_edit': 'edited page', 'user.invited': 'invited user', 'draft.restored': 'restored draft', 'site.duplicated': 'duplicated site',
+  'page.client_edit': 'edited page', 'feedback.created': 'left feedback', 'review_link.created': 'shared a review link', 'user.invited': 'invited user', 'draft.restored': 'restored draft', 'site.duplicated': 'duplicated site',
 };
 export const activityLine = (a) => html`<div class="row" style="padding:6px 0;border-bottom:1px solid #f1efea;align-items:baseline"><span style="flex:1"><strong>${a.user_name || 'Website'}</strong> ${ACTION_LABEL[a.action] || a.action}${a.detail ? html` · <span class="muted">${a.detail}</span>` : ''}${a.client_name ? html` <span class="muted small">(${a.client_name})</span>` : ''}</span><span class="muted small nowrap">${ago(a.created_at)}</span></div>`;
 
