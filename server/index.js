@@ -9,6 +9,7 @@ const { ensurePlans, seedDemo } = await import('./seed.js');
 const { startMonitor } = await import('./lib/monitor.js');
 const { startJobs } = await import('./lib/jobs.js');
 const { ensureStudioDefaults } = await import('./studio-seed.js');
+const { ensureSocialsDefaults, seedSocialsDemo } = await import('./lib/socials/seed.js');
 const { join, dirname } = await import('node:path');
 const { fileURLToPath } = await import('node:url');
 
@@ -17,7 +18,11 @@ const { server, db } = createApp();
 
 ensurePlans(db);
 ensureStudioDefaults(db);
-if (process.env.DEMO === '1' || process.argv.includes('--demo')) seedDemo(db, { ownerEmail: process.env.KESS_OWNER_EMAIL, ownerPassword: process.env.KESS_OWNER_PASSWORD });
+ensureSocialsDefaults(db);
+if (process.env.DEMO === '1' || process.argv.includes('--demo')) {
+  seedDemo(db, { ownerEmail: process.env.KESS_OWNER_EMAIL, ownerPassword: process.env.KESS_OWNER_PASSWORD });
+  seedSocialsDemo(db); // tops up today's demo cards on every start
+}
 
 if (!db.get("SELECT 1 FROM users WHERE role = 'owner'")) {
   const email = process.env.KESS_OWNER_EMAIL || 'alex@kess.media';

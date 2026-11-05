@@ -7,6 +7,7 @@ import { prevMonth } from './report.js';
 import { sendInvoiceEmail, runEmailStep } from './studio.js';
 import { xeroSync } from './xero.js';
 import { markInvoicePaid } from '../api/billing.js';
+import { startSocialsJobs } from './socials/jobs.js';
 
 const ran = (db, key) => !!db.get('SELECT 1 FROM job_runs WHERE key = ?', key);
 const mark = (db, key) => db.run("INSERT INTO job_runs (key, ran_at) VALUES (?, datetime('now')) ON CONFLICT(key) DO UPDATE SET ran_at = excluded.ran_at", key);
@@ -83,4 +84,6 @@ export function startJobs(db, dataDir) {
   };
   setTimeout(tick, 30_000).unref();
   setInterval(tick, 60 * 60_000).unref(); // hourly check; each job runs at most once a day
+  // Socials sync (20:00) and suggest (07:00) Sydney time. Off unless SOCIALS_JOBS=1, so they never run beside the Vercel crons.
+  startSocialsJobs(db);
 }

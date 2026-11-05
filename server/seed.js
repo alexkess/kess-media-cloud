@@ -7,6 +7,7 @@ import { hashPassword } from './lib/auth.js';
 import { createSiteFromTemplate } from './api/sites.js';
 import { createVersion, publishVersion, nextInvoiceNumber, addDays } from './lib/services.js';
 import { seedStudioDemo } from './studio-seed.js';
+import { seedSocialsDemo } from './lib/socials/seed.js';
 
 export function ensurePlans(db) {
   if (db.get('SELECT COUNT(*) n FROM plans').n) return;
@@ -26,6 +27,7 @@ export function seedDemo(db, { ownerEmail = 'alex@kess.media', ownerPassword = '
     db.run("INSERT INTO users (email, name, role, password_hash) VALUES (?, 'Alex Kess', 'owner', ?)", ownerEmail, hashPassword(ownerPassword));
     owner = db.get("SELECT * FROM users WHERE role = 'owner' LIMIT 1");
   }
+  seedSocialsDemo(db, { recipient: owner.email });
   if (db.get("SELECT 1 FROM clients WHERE name = 'Harbour Physio (demo)'")) return { owner };
   if (!db.get("SELECT 1 FROM settings WHERE key = 'bank_details'")) db.run("INSERT INTO settings (key, value) VALUES ('bank_details', 'Demo only: BSB 000-000, Account 0000 0000, Name: Kess Media')");
   const plan = (n) => db.get('SELECT id FROM plans WHERE name = ?', n)?.id;
