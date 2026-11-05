@@ -173,7 +173,7 @@ export function runEmailStep(db, step) {
     : step.attach === 'portal' || !step.attach ? { label: 'Open your booking page', url: ctx.portal_link } : null;
   sendJobEmail(db, job, { subject: merge(step.subject || step.name, ctx), lines: merge(step.body, ctx).split(/\n{2,}/), button });
   db.run("UPDATE job_steps SET status = 'done', done_at = datetime('now') WHERE id = ?", step.id);
-  jobEvent(db, job.id, 'Workflow', 'email.sent', step.subject || step.name);
+  jobEvent(db, job.id, 'Workflow', 'email.sent', merge(step.subject || step.name, ctx));
 }
 
 // ---------- booking ----------
