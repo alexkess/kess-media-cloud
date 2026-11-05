@@ -4,7 +4,7 @@ import { LINK, NO_LINK_IN_CAPTION } from './links.js';
 import { cleanName, dedupeLocation, withShotOn } from './names.js';
 import { captionModel } from './config.js';
 
-const EM_DASH = /—/;
+const EM_DASH = /\u2014/;
 const HIDDEN_CONTEXT = new Set(['priceFrom']);
 
 export const CAPTION_SCHEMA = {
@@ -68,7 +68,7 @@ export function checkCaptions(raw, accounts) {
   return { ok: true, value: { base: r.base.trim(), variants } };
 }
 
-const scrub = (s) => s.replace(/\s*—\s*/g, ', ');
+const scrub = (s) => s.replace(/\s*\u2014\s*/g, ', ');
 
 function fallback(raw, accounts) {
   const base = scrub(typeof raw === 'object' && raw && typeof raw.base === 'string' ? raw.base : 'Caption unavailable. Add a brief and regenerate.');

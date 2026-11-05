@@ -29,4 +29,5 @@ npm test       # node:test suite, must stay green
 - `server/api/*.js` REST API by area; `server/lib/*.js` auth, services, mail, stripe, backups, jobs, reports, monitor, export
 - `public/js/views/*.js` one module per screen; `public/js/lib.js` shared helpers (`html` tagged template escapes by default)
 - `server/lib/studio.js` + `server/api/studio*.js` + `server/lib/studio-pages.js` photo/video studio (jobs, quotes, contracts, payment plans, workflows, client booking pages)
+- `server/lib/socials/*` + `server/api/socials.js` + `public/js/views/socials.js` social posts ported from kess-socials (rotation, posting windows, captions via the Anthropic API, Publer, Shopify and Sanity sources, `scripts/import-socials-from-supabase.mjs`). Agency only. Nothing reaches Publer unless `SOCIALS_SEND=1`, and the daily jobs need `SOCIALS_JOBS=1`; keep it that way and keep the tests that prove it
 - `test/*.test.js` API and unit tests
