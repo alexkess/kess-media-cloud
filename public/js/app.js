@@ -21,6 +21,8 @@ const ROUTES = [
   ['/studio/calendar', () => import('./views/studio.js').then((m) => m.calendar), { agency: true }],
   ['/studio/setup', () => import('./views/studio-setup.js').then((m) => m.default), { agency: true }],
   ['/studio/jobs/:id', () => import('./views/job.js').then((m) => m.default), { agency: true }],
+  ['/socials', () => import('./views/socials.js').then((m) => m.roster), { agency: true }],
+  ['/socials/ledger', () => import('./views/socials.js').then((m) => m.ledger), { agency: true }],
   ['/files', () => import('./views/files.js').then((m) => m.default)],
   ['/activity', () => import('./views/settings.js').then((m) => m.activity), { agency: true }],
   ['/settings', () => import('./views/settings.js').then((m) => m.settings)],
@@ -39,6 +41,7 @@ function matchRoute(path) {
 function navItems() {
   if (isAgency()) return [
     ['/', 'Dashboard', '◧'], ['/clients', 'Clients', '◎'], ['/sites', 'Sites', '▦'], ['/requests', 'Requests', '✎'],
+    ['sep', 'Social'], ['/socials', 'Socials', '✺'],
     ['sep', 'Photo + video'], ['/studio', 'Shoots', '◉'], ['/studio/calendar', 'Calendar', '▤'], ['/studio/setup', 'Studio setup', '✦'],
     ['sep', 'Money'], ['/invoices', 'Invoices', '$'], ['/plans', 'Care plans', '♡'], ['/estimates', 'Estimates', '≈'],
     ['sep', 'Studio'], ['/files', 'Files', '⬒'], ['/activity', 'Activity', '↻'], ['/settings', 'Settings', '⚙'],

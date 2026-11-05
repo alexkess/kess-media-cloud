@@ -92,9 +92,10 @@ async function prepare(deps, post, input) {
   // A staggered time that has slipped into the past (the page sat open) moves to a few minutes from now, one minute apart.
   const soonest = deps.now().getTime() + 5 * 60_000;
   let bumped = 0;
-  const entries = variants.flatMap((v) => {
-    const account = cfg.accounts.find((a) => a.accountId === v.accountId);
-    if (!account) return [];
+  // In the brand's account order, so the request is the same every time (the source took database order).
+  const entries = cfg.accounts.flatMap((account) => {
+    const v = variants.find((x) => x.accountId === account.accountId);
+    if (!v) return [];
     const planned = input.mode === 'schedule' ? input.scheduledTimes?.[account.accountId] : undefined;
     const scheduledAt = planned && Date.parse(planned) < soonest ? new Date(soonest + bumped++ * 60_000).toISOString() : planned;
     return [{ account, caption: v.caption, ...(scheduledAt ? { scheduledAt } : {}) }];
