@@ -1,0 +1,454 @@
+{
+ "_note": "Copied from kess-socials supabase/seed/brand_config.sql and migrations 0007/0008 (mentions). The Supabase import replaces these with the live rows.",
+ "brands": {
+  "gallery": {
+   "accounts": [
+    {
+     "accountId": "5efb1070db27970de9ad19ca",
+     "platform": "instagram",
+     "label": "@kessgallery",
+     "charLimit": 2200,
+     "requiresMedia": true
+    },
+    {
+     "accountId": "5efb05dadb27970e3fad1957",
+     "platform": "facebook",
+     "label": "Kess Gallery Page",
+     "charLimit": 5000,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "69e9618a704db208c6bf6ebe",
+     "platform": "pinterest",
+     "label": "Kess Gallery Pinterest",
+     "charLimit": 500,
+     "requiresMedia": true,
+     "boardId": "182114447371189506"
+    },
+    {
+     "accountId": "5efb071bdb27970de9ad198a",
+     "platform": "google",
+     "label": "Kess Gallery",
+     "charLimit": 1500,
+     "requiresMedia": false
+    }
+   ],
+   "voice": "Kess Gallery sells fine art photographic prints by Alex Kess. Keep it short and plain: about 200 to 300 characters on Instagram and Facebook. Structure: one or two plain sentences saying what is in the frame and where; then one line naming the print options (fine art paper, acrylic or canvas); then the plain text link kess.gallery/products/<handle> where the platform rules allow links; then hashtags. Never mention prices, costs, discounts or shipping. Do not write 'as wall art it...', do not suggest rooms, do not say 'museum grade' or 'archival inks', no stacked adjectives, no superlatives, no metaphors. Pinterest may run a little longer with searchable words (place, subject, style), no hashtags. Google Business: two plain sentences and the link, no hashtags. X: under 280 characters including the link. Hashtags: Instagram 3 to 5, Facebook 0 to 2. Australian English. No em dashes.",
+   "link_domain": "kess.gallery",
+   "default_hashtags": [
+    "#wallart",
+    "#fineartphotography",
+    "#kessgallery",
+    "#australianart"
+   ]
+  },
+  "kessmedia": {
+   "accounts": [
+    {
+     "accountId": "63474b13db2797678cf366da",
+     "platform": "instagram",
+     "label": "@kess_media_sydney",
+     "charLimit": 2200,
+     "requiresMedia": true
+    },
+    {
+     "accountId": "5efb05dcdb27970de0ad194c",
+     "platform": "facebook",
+     "label": "Kess Media Page",
+     "charLimit": 5000,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "5efb0631db27970e59ad194f",
+     "platform": "linkedin",
+     "label": "Kess Media PTY LTD",
+     "charLimit": 3000,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "5efb0611db27970de9ad197c",
+     "platform": "linkedin",
+     "label": "Alexander Kesselaar (personal)",
+     "charLimit": 3000,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "69ba118cc554e9d34f8100c5",
+     "platform": "threads",
+     "label": "@kess_media",
+     "charLimit": 500,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "5efb0718db27970de9ad1988",
+     "platform": "google",
+     "label": "Kess Media",
+     "charLimit": 1500,
+     "requiresMedia": false
+    }
+   ],
+   "voice": "Kess Media is a Sydney photography and video agency serving government and infrastructure clients. Professional but human. Lead with the project and what it was for, then a detail from the shoot. Name the client only when the context says the client is public. One quiet call to action at most. LinkedIn gets the fullest version with 3 to 5 hashtags; Instagram a shorter one with up to 8; Facebook none. Australian English. No em dashes. The LinkedIn account labelled \"Alexander Kesselaar (personal)\" is the founder's own profile: write that one in the first person as Alex (\"I\", \"my team and I\"), a little more personal about the shoot, still with 3 to 5 hashtags. The company page stays \"we\".",
+   "link_domain": "kess.media",
+   "default_hashtags": [
+    "#kessmedia",
+    "#sydneyvideoproduction",
+    "#governmentcommunications"
+   ]
+  },
+  "alexkess": {
+   "accounts": [
+    {
+     "accountId": "68c8c5487fa30dd0aca358dc",
+     "platform": "instagram",
+     "label": "@alexkess",
+     "charLimit": 2200,
+     "requiresMedia": true
+    },
+    {
+     "accountId": "5efb05d9db27970e59ad194b",
+     "platform": "facebook",
+     "label": "Alex Kess Page",
+     "charLimit": 5000,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "66f52e5bdb279769dbfced9e",
+     "platform": "bluesky",
+     "label": "@alexkess.com",
+     "charLimit": 300,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "657b81acdb2797904cd1f2be",
+     "platform": "threads",
+     "label": "@alexkess",
+     "charLimit": 500,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "5efb0611db27970de9ad197c",
+     "platform": "linkedin",
+     "label": "Alexander Kesselaar",
+     "charLimit": 3000,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "69edc5141454f4622d3de589",
+     "platform": "twitter",
+     "label": "@alexkess",
+     "charLimit": 280,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "6aadbcca45015c81f1c56cc7",
+     "platform": "mastodon",
+     "label": "@alexkess",
+     "charLimit": 500,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "5efb071adb27970e06ad1986",
+     "platform": "google",
+     "label": "Alex Kess Photography",
+     "charLimit": 1500,
+     "requiresMedia": false
+    },
+    {
+     "accountId": "68c8c70a0c9eb951f53e966f",
+     "platform": "facebook",
+     "label": "Alexander Kesselaar (personal profile)",
+     "charLimit": 5000,
+     "requiresMedia": false
+    }
+   ],
+   "voice": "Alex Kess posts let the image do the talking. Every caption on every account is exactly this and nothing more: line 1 the location, a suburb or place followed by a full stop (\"Cronulla.\"); line 2 the image name followed by a full stop (\"Big Sun Surfers Silhouette.\"); line 3 the hashtags. No sentences, no description, no technical line, no emoji. Where the platform rules allow links (not Instagram, LinkedIn or X), add the plain link on its own line after the name. The location must be a suburb, town or named place (Cronulla, Humpty Doo, Bare Island), taken from the name or context. A country or state on its own (Australia, NSW) is not a location. If there is no real place, leave line 1 out; never guess. If Alex wrote a brief, it decides the name and place and overrides everything here. Otherwise use the \"Stored image name\" for line 2; if it is also the location, do not repeat it. Hashtags: Instagram exactly 3 and always include #alexkess; X, Bluesky, Threads and Mastodon 1 or 2; Facebook (page and personal profile), LinkedIn and Google Business none, so leave line 3 out. Essays are the one exception: line 1 the essay title, line 2 the plain text link where links are allowed. Australian English. No em dashes.",
+   "link_domain": "alexkess.com",
+   "default_hashtags": [
+    "#alexkess",
+    "#sydney",
+    "#dronephotography",
+    "#aerialphotography",
+    "#australianphotographer"
+   ]
+  }
+ },
+ "mentions": [
+  {
+   "name": "Austrade",
+   "keywords": [
+    "austrade",
+    "australian trade and investment commission"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "austradeofficial",
+   "facebook": null,
+   "linkedin": "urn:li:organization:7867",
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Australia's Nation Brand",
+   "keywords": [
+    "nation brand",
+    "ausnationbrand"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "ausnationbrand",
+   "facebook": null,
+   "linkedin": "urn:li:organization:56411420",
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Aphantasia Network",
+   "keywords": [
+    "aphantasia"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "aphantasianetwork",
+   "facebook": "111497816896431",
+   "linkedin": "urn:li:organization:64697377",
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "HumanAbility",
+   "keywords": [
+    "humanability"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": null,
+   "facebook": null,
+   "linkedin": "urn:li:organization:95745417",
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "DJI",
+   "keywords": [
+    "dji",
+    "mavic"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "djiglobal",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "PetaPixel",
+   "keywords": [
+    "petapixel"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "petapixel",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Leogate Estate Wines",
+   "keywords": [
+    "leogate"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "leogateestatewines",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Kess Gallery",
+   "keywords": [
+    "kess gallery"
+   ],
+   "brands": [
+    "alexkess"
+   ],
+   "always": true,
+   "instagram": "kessgallery",
+   "facebook": "226961911361437",
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Georgia Kesselaar",
+   "keywords": [
+    "georgia"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "georgia.kesselaar",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Amy Smith",
+   "keywords": [
+    "amy smith"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": null,
+   "facebook": null,
+   "linkedin": "urn:li:person:HdntSJ3h4l",
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Alex Kess",
+   "keywords": [
+    "alex kess"
+   ],
+   "brands": [
+    "gallery"
+   ],
+   "always": true,
+   "instagram": "alexkess",
+   "facebook": "104680749567314",
+   "linkedin": "urn:li:person:eaaEEiJatC",
+   "twitter": "alexkess",
+   "bluesky": "alexkess.com",
+   "mastodon": "alexkess@mastodon.social"
+  },
+  {
+   "name": "Sydney Opera House",
+   "keywords": [
+    "opera house",
+    "sydney opera house"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "sydneyoperahouse",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Sydney",
+   "keywords": [
+    "sydney",
+    "harbour bridge",
+    "sydney harbour"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "sydney",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "City of Sydney",
+   "keywords": [
+    "city of sydney",
+    "sydney cbd",
+    "circular quay",
+    "the rocks",
+    "darling harbour",
+    "barangaroo"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "cityofsydney",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Sutherland Shire",
+   "keywords": [
+    "sutherland shire",
+    "sutherland",
+    "the shire",
+    "cronulla",
+    "north cronulla",
+    "kurnell",
+    "wanda",
+    "elouera",
+    "bundeena",
+    "maianbar",
+    "caringbah",
+    "port hacking",
+    "voodoo point",
+    "bate bay"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "sutherlandshire",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Visit NSW",
+   "keywords": [
+    "new south wales",
+    "nsw",
+    "blue mountains",
+    "hunter valley",
+    "royal national park",
+    "sea cliff bridge",
+    "garie",
+    "wattamolla"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "visitnsw",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  },
+  {
+   "name": "Australia",
+   "keywords": [
+    "great barrier reef",
+    "uluru",
+    "whitsundays",
+    "palm cove",
+    "twelve apostles"
+   ],
+   "brands": null,
+   "always": false,
+   "instagram": "australia",
+   "facebook": null,
+   "linkedin": null,
+   "twitter": null,
+   "bluesky": null,
+   "mastodon": null
+  }
+ ]
+}

@@ -243,6 +243,52 @@ CREATE TABLE IF NOT EXISTS outbox (
 
 CREATE TABLE IF NOT EXISTS job_runs (key TEXT PRIMARY KEY, ran_at TEXT NOT NULL DEFAULT (datetime('now')));
 
+-- ---------- Socials (ported from kess-socials; agency only) ----------
+-- Mirrors the Supabase tables brand_config, content_item, suggestion, post, post_variant and mention.
+-- Ids are text UUIDs so imported history keeps its ids. Arrays and JSON are JSON text. Timestamps are ISO strings.
+CREATE TABLE IF NOT EXISTS social_brand (
+  brand TEXT PRIMARY KEY CHECK (brand IN ('gallery','kessmedia','alexkess')),
+  accounts TEXT NOT NULL DEFAULT '[]', voice TEXT NOT NULL DEFAULT '', link_domain TEXT NOT NULL DEFAULT '',
+  default_hashtags TEXT NOT NULL DEFAULT '[]'
+);
+CREATE TABLE IF NOT EXISTS social_item (
+  id TEXT PRIMARY KEY, brand TEXT NOT NULL, source TEXT NOT NULL, source_id TEXT NOT NULL, parent_id TEXT NOT NULL,
+  parent_title TEXT NOT NULL, parent_url TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('image','product','essay')),
+  image_url TEXT NOT NULL, image_w INTEGER, image_h INTEGER, title TEXT NOT NULL, context TEXT NOT NULL DEFAULT '{}', brief TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','retired')), retired_reason TEXT CHECK (retired_reason IN ('never','gone')),
+  position INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, last_posted_at TEXT, times_posted INTEGER NOT NULL DEFAULT 0, rest_until TEXT,
+  UNIQUE (brand, source_id)
+);
+CREATE INDEX IF NOT EXISTS idx_social_item_rotation ON social_item(brand, status);
+CREATE INDEX IF NOT EXISTS idx_social_item_parent ON social_item(parent_id);
+CREATE TABLE IF NOT EXISTS social_suggestion (
+  id TEXT PRIMARY KEY, item_id TEXT NOT NULL REFERENCES social_item(id), for_date TEXT NOT NULL, recipient TEXT NOT NULL,
+  base_caption TEXT, decision TEXT NOT NULL DEFAULT 'pending' CHECK (decision IN ('pending','later','never','approved')),
+  decided_by TEXT, decided_at TEXT, manual INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (item_id, for_date)
+);
+CREATE INDEX IF NOT EXISTS idx_social_suggestion_date ON social_suggestion(for_date);
+CREATE TABLE IF NOT EXISTS social_post (
+  id TEXT PRIMARY KEY, suggestion_id TEXT NOT NULL REFERENCES social_suggestion(id), brand TEXT NOT NULL,
+  item_ids TEXT NOT NULL DEFAULT '[]', base_caption TEXT NOT NULL DEFAULT '', mode TEXT CHECK (mode IN ('draft','schedule','now')),
+  scheduled_at TEXT, scheduled_until TEXT, publer_job_id TEXT, publer_post_ids TEXT,
+  state TEXT NOT NULL DEFAULT 'pending' CHECK (state IN ('pending','sending','sent','failed')), locked_at TEXT, error TEXT,
+  created_at TEXT NOT NULL, sent_at TEXT,
+  dry_run TEXT, dry_run_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_social_post_suggestion ON social_post(suggestion_id);
+CREATE INDEX IF NOT EXISTS idx_social_post_brand ON social_post(brand, mode, state, scheduled_at);
+CREATE TABLE IF NOT EXISTS social_variant (
+  id TEXT PRIMARY KEY, post_id TEXT NOT NULL REFERENCES social_post(id) ON DELETE CASCADE, account_id TEXT NOT NULL,
+  platform TEXT NOT NULL, caption TEXT NOT NULL DEFAULT '', enabled INTEGER NOT NULL DEFAULT 1, edited INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (post_id, account_id)
+);
+CREATE TABLE IF NOT EXISTS social_mention (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, keywords TEXT NOT NULL DEFAULT '[]', brands TEXT, always INTEGER NOT NULL DEFAULT 0,
+  instagram TEXT, facebook TEXT, linkedin TEXT, twitter TEXT, bluesky TEXT, mastodon TEXT,
+  created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_sites_client ON sites(client_id);
 CREATE INDEX IF NOT EXISTS idx_requests_client ON requests(client_id, status);
 CREATE INDEX IF NOT EXISTS idx_submissions_site ON submissions(site_id, created_at);
