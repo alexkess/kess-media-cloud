@@ -5,6 +5,8 @@ import { createBackup } from './backup.js';
 import { loadInvoice, notify, money, logActivity } from './services.js';
 import { prevMonth } from './report.js';
 import { sendInvoiceEmail, runEmailStep } from './studio.js';
+import { xeroSync } from './xero.js';
+import { markInvoicePaid } from '../api/billing.js';
 
 const ran = (db, key) => !!db.get('SELECT 1 FROM job_runs WHERE key = ?', key);
 const mark = (db, key) => db.run("INSERT INTO job_runs (key, ran_at) VALUES (?, datetime('now')) ON CONFLICT(key) DO UPDATE SET ran_at = excluded.ran_at", key);
@@ -74,7 +76,11 @@ export async function runDaily(db, dataDir, now = new Date()) {
 }
 
 export function startJobs(db, dataDir) {
-  const tick = () => runDaily(db, dataDir).catch((e) => console.error('Daily jobs failed:', e));
+  const tick = async () => {
+    await runDaily(db, dataDir).catch((e) => console.error('Daily jobs failed:', e));
+    // Hourly: send issued invoices to Xero and bring back payments reconciled there.
+    await xeroSync(db, dataDir, (inv) => markInvoicePaid(db, inv, { via: 'xero' })).catch((e) => console.error('Xero sync failed:', e.message));
+  };
   setTimeout(tick, 30_000).unref();
   setInterval(tick, 60 * 60_000).unref(); // hourly check; each job runs at most once a day
 }

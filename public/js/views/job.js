@@ -4,9 +4,10 @@ import { JOB_STATUS, CAT, jobPill } from './studio.js';
 const PROVIDER_ICON = { dropbox: '📦', google_drive: '🟢', picflow: '🖼', vimeo: '🎬', frameio: '🎞', youtube: '▶️', pictime: '📸', pixieset: '📸', wetransfer: '📤', onedrive: '☁️', smugmug: '📸', link: '🔗' };
 
 export default async function jobView(el, { id }) {
-  const [job, packages, plans, contracts, workflows, questionnaires, team] = await Promise.all([
+  const [job, packages, plans, contracts, workflows, questionnaires, team, apps] = await Promise.all([
     api(`/api/studio/jobs/${id}`), api('/api/studio/packages'), api('/api/studio/payment-plans'), api('/api/studio/contract-templates'),
-    api('/api/studio/workflows'), api('/api/studio/questionnaires'), api('/api/team')]);
+    api('/api/studio/workflows'), api('/api/studio/questionnaires'), api('/api/team'), api('/api/integrations/apps').catch(() => ({}))]);
+  const dbxOn = !!apps.dropbox?.connected, vimeoOn = !!apps.vimeo?.configured;
   const reload = () => jobView(el, { id });
   const call = async (p, opts, msg) => { try { await api(p, opts); if (msg) toast(msg); reload(); } catch (e) { fail(e); } };
   const booked = ['booked', 'shot', 'editing', 'delivered', 'complete'].includes(job.status);
@@ -54,7 +55,10 @@ export default async function jobView(el, { id }) {
       ${job.questionnaire ? html`<div class="card"><div class="card-head"><h2>${job.questionnaire.questions.name || 'Questionnaire'}</h2>${job.questionnaire.submitted_at ? pill('paid', `answered ${ago(job.questionnaire.submitted_at)}`) : pill('draft', 'not answered yet')}</div>
         ${(job.questionnaire.questions.questions || []).map((qq) => html`<div style="padding:6px 0;border-bottom:1px solid #f1efea"><div class="muted small">${qq.label}</div><div class="pre">${(() => { const a = job.questionnaire.answers[qq.id]; return a === true ? 'Yes' : a === false ? 'No' : a || '—'; })()}</div></div>`)}</div>` : ''}
 
-      <div class="card"><div class="card-head"><h2>Files and delivery</h2></div>
+      <div class="card"><div class="card-head"><h2>Files and delivery</h2><span class="row">${dbxOn ? html`<button class="btn sm" id="dbxshare">📦 Share from Dropbox</button>` : ''}${vimeoOn ? html`<button class="btn sm" id="vimeo">🎬 Add from Vimeo</button>` : ''}</span></div>
+        ${dbxOn ? html`<div class="callout small" style="margin-bottom:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+          <span>${job.dropbox_path ? html`📦 <span class="mono">${job.dropbox_path}</span>` : html`No Dropbox folder yet.`}${job.dropbox_request_url ? html`<br>Client upload link is on their booking page.` : ''}</span>
+          <span class="row">${job.dropbox_path ? '' : html`<button class="btn sm" id="dbxfolder">Create shoot folders</button>`}${job.dropbox_request_url ? html`<button class="btn sm" data-copy="${job.dropbox_request_url}">Copy upload link</button>` : html`<button class="btn sm" id="dbxreq">Client upload link</button>`}</span></div>` : ''}
         ${job.deliveries.map((d) => html`<div class="row between" style="padding:8px 0;border-bottom:1px solid #f1efea"><span>${PROVIDER_ICON[d.provider] || '🔗'} <strong>${d.label || d.provider_label}</strong> <span class="muted small">${d.provider_label}${d.embed ? ' · plays on the client page' : ''}${d.note ? ` · ${d.note}` : ''}</span></span><span class="row"><a class="btn sm" href="${d.url}" target="_blank" rel="noopener">Open ↗</a><button class="btn sm ghost danger" data-deldel="${d.id}">✕</button></span></div>`)}
         <form id="deliv" class="form mt"><div class="two">${field('Link (Dropbox, Google Drive, Picflow, Vimeo, Frame.io, Pic-Time…)', 'url', { required: true, placeholder: 'https://' })}${field('Label', 'label', { placeholder: 'e.g. Full gallery, Highlight film' })}</div>
           ${field('Note for the client', 'note', { placeholder: 'e.g. Password: gala2026, available for 60 days' })}
@@ -117,6 +121,10 @@ export default async function jobView(el, { id }) {
     const v = await modal({ title: 'Add a task', body: html`${field('Task', 'name', { required: true })}${field('Due', 'due_date', { type: 'date' })}` });
     if (v) call(`/api/studio/jobs/${id}/steps`, { method: 'POST', body: v }, 'Task added');
   };
+  el.querySelector('#dbxfolder')?.addEventListener('click', () => call(`/api/studio/jobs/${id}/dropbox/folder`, { method: 'POST', body: {} }, 'Dropbox folders created'));
+  el.querySelector('#dbxreq')?.addEventListener('click', () => call(`/api/studio/jobs/${id}/dropbox/request`, { method: 'POST', body: {} }, 'Upload link added to the booking page'));
+  el.querySelector('#dbxshare')?.addEventListener('click', () => dropboxPicker(job, reload));
+  el.querySelector('#vimeo')?.addEventListener('click', () => vimeoPicker(job, reload));
   el.querySelector('#deliv').onsubmit = (e) => { e.preventDefault(); const f = e.target.elements; call(`/api/studio/jobs/${id}/deliveries`, { method: 'POST', body: { url: f.url.value, label: f.label.value, note: f.note.value, notify: f.notify.checked } }, f.notify.checked ? 'Added and client emailed' : 'Added'); };
   el.querySelectorAll('[data-deldel]').forEach((b) => b.onclick = () => call(`/api/studio/jobs/${id}/deliveries/${b.dataset.deldel}`, { method: 'DELETE' }));
   el.querySelector('#details').onsubmit = (e) => {
@@ -129,4 +137,55 @@ export default async function jobView(el, { id }) {
     try { await api(`/api/studio/jobs/${id}`, { method: 'DELETE' }); location.hash = '#/studio'; } catch (err) { fail(err); }
   });
   void esc;
+}
+
+// Browse Dropbox and share a folder or file as a delivery.
+async function dropboxPicker(job, reload) {
+  let path = job.dropbox_path || '/';
+  await modal({ title: 'Share from Dropbox', wide: true, submit: '', cancel: 'Close', body: html`<div id="dbx"><p class="muted">Loading…</p></div>`, onOpen: (form, close) => {
+    const box = form.querySelector('#dbx');
+    const show = async (p) => {
+      path = p;
+      render(box, html`<p class="muted">Loading…</p>`);
+      let r;
+      try { r = await api(`/api/dropbox/list?path=${encodeURIComponent(p)}`); } catch (e) { render(box, html`<div class="callout warn">${e.message}</div><button type="button" class="btn sm" id="up">Go to top</button>`); box.querySelector('#up').onclick = () => show('/'); return; }
+      const parent = p === '/' ? null : p.split('/').slice(0, -1).join('/') || '/';
+      render(box, html`<div class="row between" style="margin-bottom:8px"><span class="mono small">${p}</span><span class="row">${parent ? html`<button type="button" class="btn sm" id="up">↑ Up</button>` : ''}${p !== '/' ? html`<button type="button" class="btn sm primary" id="sharehere">Share this folder</button>` : ''}</span></div>
+        <div style="max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:8px">${r.entries.length ? r.entries.map((e, i) => html`<div class="row between" style="padding:7px 10px;border-bottom:1px solid #f1efea"><span>${e.type === 'folder' ? html`<a href="#" data-open="${i}">📁 ${e.name}</a>` : html`📄 ${e.name}`}</span><button type="button" class="btn sm" data-share="${i}">Share</button></div>`) : html`<div class="empty">Empty folder</div>`}</div>
+        <div class="form mt"><div class="two">${field('Label for the client', 'label', { placeholder: 'e.g. Final photos' })}${field('Note', 'note', { placeholder: 'optional' })}</div>${field('Email the client that it is ready', 'notify', { type: 'checkbox', value: true })}</div>`);
+      box.querySelector('#up')?.addEventListener('click', () => show(parent));
+      box.querySelectorAll('[data-open]').forEach((a) => a.addEventListener('click', (ev) => { ev.preventDefault(); show(r.entries[a.dataset.open].path); }));
+      const share = async (p2, name) => {
+        const label = box.querySelector('[name=label]').value || name;
+        try { await api(`/api/studio/jobs/${job.id}/dropbox/deliver`, { method: 'POST', body: { path: p2, label, note: box.querySelector('[name=note]').value, notify: box.querySelector('[name=notify]').checked } }); toast('Shared and added to deliveries'); close(null); reload(); } catch (e) { fail(e); }
+      };
+      box.querySelector('#sharehere')?.addEventListener('click', () => share(p, p.split('/').pop()));
+      box.querySelectorAll('[data-share]').forEach((b) => b.addEventListener('click', () => { const e = r.entries[b.dataset.share]; share(e.path, e.name); }));
+    };
+    show(path);
+  } });
+}
+
+// Pick a video from the Vimeo library.
+async function vimeoPicker(job, reload) {
+  await modal({ title: 'Add from Vimeo', wide: true, submit: '', cancel: 'Close', body: html`<div class="row"><input class="i" id="vq" placeholder="Search your videos" style="flex:1"><button type="button" class="btn" id="vgo">Search</button></div>
+    <div class="form mt"><div class="row">${field('Also add the review page (timecoded comments)', 'review', { type: 'checkbox', value: true })}${field('Email the client', 'notify', { type: 'checkbox', value: true })}</div></div><div id="vlist" class="mt"></div>`, onOpen: (form, close) => {
+    const list = form.querySelector('#vlist');
+    const load = async (page = 1) => {
+      render(list, html`<p class="muted">Loading…</p>`);
+      try {
+        const r = await api(`/api/vimeo/videos?query=${encodeURIComponent(form.querySelector('#vq').value)}&page=${page}`);
+        render(list, html`${r.videos.length ? html`<div class="files">${r.videos.map((v, i) => html`<button type="button" class="file" data-v="${i}" style="cursor:pointer;padding:0;text-align:left"><div class="pic" style="${v.thumb ? `background-image:url('${v.thumb}')` : ''}"></div><div class="meta"><strong>${v.name}</strong><span class="muted">${Math.floor(v.duration / 60)}:${String(v.duration % 60).padStart(2, '0')} · ${v.privacy || ''}${v.review_link ? ' · review page' : ''}</span></div></button>`)}</div>
+          <div class="row between mt"><span class="muted small">${r.total} videos</span><span class="row">${r.page > 1 ? html`<button type="button" class="btn sm" data-page="${r.page - 1}">← Newer</button>` : ''}${r.page * r.per_page < r.total ? html`<button type="button" class="btn sm" data-page="${r.page + 1}">Older →</button>` : ''}</span></div>` : html`<div class="empty">No videos found.</div>`}`);
+        list.querySelectorAll('[data-page]').forEach((b) => b.addEventListener('click', () => load(Number(b.dataset.page))));
+        list.querySelectorAll('[data-v]').forEach((b) => b.addEventListener('click', async () => {
+          const v = r.videos[b.dataset.v];
+          try { await api(`/api/studio/jobs/${job.id}/vimeo`, { method: 'POST', body: { video_id: v.id, include_review: form.querySelector('[name=review]').checked, notify: form.querySelector('[name=notify]').checked } }); toast(`${v.name} added`); close(null); reload(); } catch (e) { fail(e); }
+        }));
+      } catch (e) { render(list, html`<div class="callout warn">${e.message}</div>`); }
+    };
+    form.querySelector('#vgo').onclick = () => load(1);
+    form.querySelector('#vq').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); load(1); } });
+    load(1);
+  } });
 }

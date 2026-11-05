@@ -49,7 +49,9 @@ export async function invoice(el, { id }, q = new URLSearchParams()) {
         ${agency && inv.status === 'paid' ? html`<button class="btn" id="unpaid">Mark unpaid</button>` : ''}
         ${inv.can_pay_online ? html`<button class="btn primary" id="paynow">Pay ${money(inv.total_cents, { cents: true })} by card</button>` : ''}</div></div>
       ${!agency && inv.status === 'sent' && inv.bank_details ? html`<div class="callout" style="margin-bottom:16px"><strong>${inv.can_pay_online ? 'Or pay by bank transfer' : 'How to pay'}</strong><div class="pre">${inv.bank_details}</div><div class="small muted">Reference: ${inv.number}</div></div>` : ''}
-      ${inv.paid_via ? html`<p class="muted small">Paid ${inv.paid_via === 'stripe' ? 'online by card (Stripe)' : 'by bank transfer / recorded manually'}.</p>` : ''}
+      ${inv.paid_via ? html`<p class="muted small">Paid ${inv.paid_via === 'stripe' ? 'online by card (Stripe)' : inv.paid_via === 'xero' ? 'and reconciled in Xero' : 'by bank transfer / recorded manually'}.</p>` : ''}
+      ${agency && inv.status !== 'draft' && (inv.xero_connected || inv.xero_id) ? html`<p class="small" id="xero">${inv.xero_id ? html`<span class="pill">In Xero</span> <span class="muted">${(inv.xero_status || '').toLowerCase()}${inv.xero_synced_at ? ` · synced ${date(inv.xero_synced_at)}` : ''}</span>` : html`<span class="pill grey">Not in Xero</span>`}
+        ${inv.xero_error ? html` <span style="color:var(--warn)">${inv.xero_error}</span>` : ''} ${!inv.xero_id && inv.xero_connected ? html`<button class="btn sm" id="toxero">Send to Xero</button>` : ''}</p>` : ''}
       <div class="card table-wrap"><table class="t"><thead><tr><th style="width:55%">Description</th><th class="n">Qty</th><th class="n">Unit ex GST</th><th class="n">Amount</th>${editable ? html`<th></th>` : ''}</tr></thead><tbody>
         ${items.map((i, n) => editable ? html`<tr><td><input class="i" data-k="description" data-n="${n}" value="${i.description}"></td><td><input class="i right" style="width:70px" type="number" step="0.25" data-k="qty" data-n="${n}" value="${i.qty}"></td><td><input class="i right" style="width:110px" type="number" step="0.01" data-k="unit" data-n="${n}" value="${centsToDollars(i.unit_cents)}"></td><td class="n">${money(Math.round(i.qty * i.unit_cents), { cents: true })}</td><td><button class="btn sm ghost danger" data-rm="${n}">✕</button></td></tr>`
           : html`<tr><td>${i.description}</td><td class="n">${i.qty}</td><td class="n">${money(i.unit_cents, { cents: true })}</td><td class="n">${money(Math.round(i.qty * i.unit_cents), { cents: true })}</td></tr>`)}
@@ -79,6 +81,10 @@ export async function invoice(el, { id }, q = new URLSearchParams()) {
       items.push({ description: `${p.name} care plan (${new Date().toISOString().slice(0, 7)})`, qty: 1, unit_cents: p.price_cents }); draw();
     });
     el.querySelector('#save')?.addEventListener('click', () => save());
+    el.querySelector('#toxero')?.addEventListener('click', async (e) => {
+      e.target.disabled = true;
+      try { await api(`/api/invoices/${id}/xero`, { method: 'POST', body: {} }); toast('Sent to Xero'); invoice(el, { id }); } catch (err) { fail(err); e.target.disabled = false; }
+    });
     el.querySelector('#paynow')?.addEventListener('click', async (e) => {
       e.target.disabled = true;
       try { const r = await api(`/api/invoices/${id}/pay`, { method: 'POST', body: {} }); location.href = r.url; } catch (err) { fail(err); e.target.disabled = false; }

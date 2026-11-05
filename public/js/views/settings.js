@@ -18,7 +18,9 @@ async function qrSvg(text) {
   } catch { return ''; }
 }
 
-export async function settings(el) {
+export async function settings(el, _p, q = new URLSearchParams()) {
+  if (q.get('connected')) { toast(`${q.get('connected') === 'xero' ? 'Xero' : 'Dropbox'} connected${q.get('name') ? `: ${q.get('name')}` : ''}`); history.replaceState(null, '', '#/settings'); }
+  if (q.get('integration_error')) { toast(q.get('integration_error'), true); history.replaceState(null, '', '#/settings'); }
   const owner = isOwner();
   const me = (await api('/api/auth/me')).user;
   const [s, team, integ, outbox, backups] = isAgency()
@@ -72,7 +74,9 @@ export async function settings(el) {
     <div class="grid g2 mt">
       <div class="card"><div class="card-head"><h2>Recent backups</h2></div>${backups.length ? html`<table class="t small">${backups.map((b) => html`<tr><td class="mono">${b.name}</td><td>${kb(b.size)}</td><td class="right"><a class="btn sm" href="/api/backups/${b.name}">Download</a></td></tr>`)}</table>` : html`<div class="empty">No backups yet. The first runs within a minute of starting the server.</div>`}</div>
       <div class="card"><div class="card-head"><h2>Email outbox</h2><span class="muted small">last 100</span></div>${outbox.length ? html`<table class="t small">${outbox.slice(0, 25).map((m) => html`<tr class="click" data-mail="${m.id}"><td><strong>${m.subject}</strong><div class="muted">${m.to_addr} · ${ago(m.created_at)}</div></td><td class="right">${pill(m.status === 'sent' ? 'paid' : m.status === 'failed' ? 'overdue' : 'draft', m.status)}</td></tr>`)}</table>` : html`<div class="empty">No emails yet.</div>`}</div>
-    </div>` : ''}`);
+    </div>` : ''}
+    ${owner ? html`<h2 style="margin:26px 0 12px">Connected <em>apps</em></h2><div id="apps"></div>` : ''}`);
+  if (owner) import('./apps.js').then((m) => m.appsPanel(el.querySelector('#apps'))).catch(fail);
 
   el.querySelector('#en').addEventListener('change', async (e) => { try { await api('/api/auth/prefs', { method: 'PATCH', body: { email_notify: e.target.checked } }); toast(e.target.checked ? 'Email notifications on' : 'Email notifications off'); } catch (err) { fail(err); } });
   el.querySelector('#tfa-on')?.addEventListener('click', async () => {

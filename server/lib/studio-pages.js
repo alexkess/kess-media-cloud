@@ -135,10 +135,12 @@ export function jobPage(db, job, { baseUrl }) {
       ${emb ? `<div class="embed"><iframe src="${esc(emb)}" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen title="${esc(d.label || 'Video')}"></iframe></div>` : ''}</div>`;
   }).join('')}</div></div>` : '';
 
+  const uploads = job.dropbox_request_url && /^https:\/\/(www\.)?dropbox\.com\//.test(job.dropbox_request_url)
+    ? `<div class="card" id="upload"><h2>Send us <em>files</em></h2><p>Logos, run sheets, reference photos or anything else for the shoot. No Dropbox account needed.</p><a class="btn" href="${esc(job.dropbox_request_url)}" target="_blank" rel="noopener">Upload files</a></div>` : '';
   const body = `<section class="hero"><div class="w"><div class="eyebrow">${esc(job.category === 'video' ? 'Video' : job.category === 'photo_video' ? 'Photo + video' : 'Photography')}${booked ? ' · booked' : ''}</div>
     <h1>Hi ${esc(first)}, <em>${booked ? "you're booked." : "here's your quote."}</em></h1>
     <div class="facts"><span><b>${esc(job.title)}</b></span><span>📅 ${esc(longDate(job.shoot_date))}${job.start_time ? `, ${esc(job.start_time)}${job.end_time ? `–${esc(job.end_time)}` : ''}` : ''}</span>${job.location ? `<span>📍 ${esc(job.location)}</span>` : ''}<span>✉️ <a style="color:var(--mint)" href="mailto:${esc(ownerEmail)}">${esc(owner?.send_as_name || owner?.name || 'Kess Media')}</a></span></div></div></section>
-    <main class="w">${statusSteps(job, contract, invoices)}${job.status === 'lost' ? '<div class="card"><h2>This quote has closed</h2><p>Get in touch if you would like to pick it back up.</p></div>' : `${files}${quote}${agreement}${bookBox}${payments}${questionnaire}`}</main>`;
+    <main class="w">${statusSteps(job, contract, invoices)}${job.status === 'lost' ? '<div class="card"><h2>This quote has closed</h2><p>Get in touch if you would like to pick it back up.</p></div>' : `${files}${quote}${agreement}${bookBox}${payments}${questionnaire}${uploads}`}</main>`;
 
   const script = `${POST_JS}${SIG_JS}
 const API=${JSON.stringify(api)};const RATE=${rate};

@@ -225,6 +225,12 @@ CREATE TABLE IF NOT EXISTS deliveries (
   provider TEXT NOT NULL, url TEXT NOT NULL, label TEXT, note TEXT, created_by INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+-- ---------- Integrations (Xero, Dropbox, Vimeo) ----------
+CREATE TABLE IF NOT EXISTS integrations (
+  provider TEXT PRIMARY KEY, account_name TEXT, secrets TEXT, settings TEXT NOT NULL DEFAULT '{}',
+  connected_by INTEGER, connected_at TEXT, last_sync_at TEXT, last_error TEXT
+);
+
 CREATE TABLE IF NOT EXISTS job_events (
   id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
   who TEXT, action TEXT NOT NULL, detail TEXT, created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -258,8 +264,11 @@ const COLUMNS = {
   users: { email_notify: 'INTEGER NOT NULL DEFAULT 1', totp_secret: 'TEXT', totp_pending: 'TEXT', totp_enabled: 'INTEGER NOT NULL DEFAULT 0',
     send_as_email: 'TEXT', send_as_name: 'TEXT', email_signature: 'TEXT', cal_token: 'TEXT' },
   invoices: { stripe_session_id: 'TEXT', reminded_at: 'TEXT', paid_via: 'TEXT',
-    job_id: 'INTEGER', owner_id: 'INTEGER', send_on: 'TEXT', public_token: 'TEXT', sent_at: 'TEXT', due_reminded_at: 'TEXT', plan_label: 'TEXT' },
+    job_id: 'INTEGER', owner_id: 'INTEGER', send_on: 'TEXT', public_token: 'TEXT', sent_at: 'TEXT', due_reminded_at: 'TEXT', plan_label: 'TEXT',
+    xero_id: 'TEXT', xero_status: 'TEXT', xero_synced_at: 'TEXT', xero_error: 'TEXT', xero_payment_id: 'TEXT' },
   outbox: { from_addr: 'TEXT', reply_to: 'TEXT' },
+  clients: { xero_contact_id: 'TEXT' },
+  jobs: { dropbox_path: 'TEXT', dropbox_request_id: 'TEXT', dropbox_request_url: 'TEXT' },
 };
 function migrate(db) {
   for (const [table, cols] of Object.entries(COLUMNS)) {

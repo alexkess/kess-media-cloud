@@ -4,7 +4,7 @@ import { j, logActivity, slugify } from '../lib/services.js';
 import { getSettings } from '../db.js';
 import {
   JOB_STATUSES, CATEGORIES, newToken, today, sha256, getJob, loadJob, jobContext, merge, jobEvent, sendJobEmail,
-  createPlanInvoices, sendInvoiceEmail, bookJob, detectProvider, runEmailStep, planSchedule, jobTotals, assertSendable,
+  createPlanInvoices, sendInvoiceEmail, bookJob, detectProvider, runEmailStep, planSchedule, jobTotals, assertSendable, addDelivery,
 } from '../lib/studio.js';
 
 const str = (v, max = 500) => String(v ?? '').slice(0, max);
@@ -365,15 +365,8 @@ export default function register(r) {
     requireAgency(ctx);
     const job = getJob(ctx.db, Number(ctx.params.id));
     const b = await ctx.body();
-    const url = String(b.url || '').trim();
-    const provider = detectProvider(url);
-    ctx.db.run('INSERT INTO deliveries (job_id, provider, url, label, note, created_by) VALUES (?, ?, ?, ?, ?, ?)', job.id, provider, url.slice(0, 2000), str(b.label, 200), str(b.note, 1000), ctx.user.id);
-    jobEvent(ctx.db, job.id, ctx.user.name, 'delivery.added', `${b.label || provider}`);
-    if (b.notify) {
-      const c = jobContext(ctx.db, job);
-      await sendJobEmail(ctx.db, job, { subject: merge('Your {{job_title}} files are ready', c), lines: [`Hi ${c.first_name},`, `${b.label || 'Your files'} ${b.label ? 'is' : 'are'} ready.${b.note ? ` ${b.note}` : ''}`, 'Everything is on your booking page.'], button: { label: 'View your files', url: `${c.portal_link}#files` } });
-      if (['booked', 'shot', 'editing'].includes(job.status)) ctx.db.run("UPDATE jobs SET status = 'delivered', updated_at = datetime('now') WHERE id = ?", job.id);
-    }
+    detectProvider(String(b.url || '').trim()); // validates the link
+    await addDelivery(ctx.db, job, { url: b.url, label: str(b.label, 200), note: str(b.note, 1000), notify: !!b.notify, user: ctx.user });
     return loadJob(ctx.db, job.id);
   });
   r.delete('/api/studio/jobs/:id/deliveries/:did', async (ctx) => {

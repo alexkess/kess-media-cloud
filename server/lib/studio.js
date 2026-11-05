@@ -6,6 +6,7 @@ import { getSettings } from '../db.js';
 import { HttpError, bad, notFound } from './http.js';
 import { j, logActivity, notify, nextInvoiceNumber, addDays, loadInvoice, invoiceTotals, gstRate, money } from './services.js';
 import { sendMail, senderFor, appUrl } from './mail.js';
+import { xeroSoon } from './xero.js';
 
 export const JOB_STATUSES = ['enquiry', 'quoted', 'booked', 'shot', 'editing', 'delivered', 'complete', 'lost'];
 export const CATEGORIES = ['photo', 'video', 'photo_video'];
@@ -140,6 +141,7 @@ export function sendInvoiceEmail(db, invoiceId, { kind = 'new', user = null } = 
       : [`Hi ${first},`, `Here's invoice ${inv.number} for ${amount} (inc GST)${inv.notes ? `: ${inv.notes}` : ''}. It's due on ${ddmmyyyy(inv.due_date)}.`, 'You can pay online or by bank transfer from the link below.'];
   sendMail(db, { to: inv.client_email, subject, heading: subject, lines: [...lines, sender.signature], button: { label: 'View and pay invoice', url: `${appUrl(db)}/i/${inv.public_token}` },
     from: sender.from, replyTo: sender.replyTo, footer: `${s.agency_name}${s.agency_abn ? ` · ABN ${s.agency_abn}` : ''} · ${s.agency_email}` });
+  if (kind === 'new') xeroSoon(db, inv.id);
   if (kind === 'overdue') db.run('UPDATE invoices SET reminded_at = ? WHERE id = ?', today(), inv.id);
   if (kind === 'due') db.run('UPDATE invoices SET due_reminded_at = ? WHERE id = ?', today(), inv.id);
   if (inv.job_id) jobEvent(db, inv.job_id, owner?.name, `invoice.${kind === 'new' ? 'sent' : kind + '_reminder'}`, `${inv.number} ${amount} to ${inv.client_email}`);
@@ -226,6 +228,19 @@ export function embedUrl(url) {
   if (host === 'youtu.be') { const id = u.pathname.slice(1).split('/')[0]; if (/^[\w-]{6,20}$/.test(id)) return `https://www.youtube-nocookie.com/embed/${id}`; }
   if (host === 'youtube.com' || host === 'm.youtube.com') { const id = u.searchParams.get('v') || (u.pathname.match(/^\/(?:embed|shorts)\/([\w-]+)/) || [])[1]; if (id && /^[\w-]{6,20}$/.test(id)) return `https://www.youtube-nocookie.com/embed/${id}`; }
   return null;
+}
+
+// Add a delivery link to a job; optionally email the client and mark the job delivered.
+export async function addDelivery(db, job, { url, label = '', note = '', notify: tell = false, user = null, provider }) {
+  const clean = String(url || '').trim();
+  const prov = provider || detectProvider(clean);
+  db.run('INSERT INTO deliveries (job_id, provider, url, label, note, created_by) VALUES (?, ?, ?, ?, ?, ?)', job.id, prov, clean.slice(0, 2000), String(label || '').slice(0, 200), String(note || '').slice(0, 1000), user?.id ?? null);
+  jobEvent(db, job.id, user?.name, 'delivery.added', `${label || prov}`);
+  if (tell) {
+    const c = jobContext(db, job);
+    await sendJobEmail(db, job, { subject: merge('Your {{job_title}} files are ready', c), lines: [`Hi ${c.first_name},`, `${label || 'Your files'} ${label ? 'is' : 'are'} ready.${note ? ` ${note}` : ''}`, 'Everything is on your booking page.'], button: { label: 'View your files', url: `${c.portal_link}#files` } });
+    if (['booked', 'shot', 'editing'].includes(job.status)) db.run("UPDATE jobs SET status = 'delivered', updated_at = datetime('now') WHERE id = ?", job.id);
+  }
 }
 
 // ---------- full job for the console ----------

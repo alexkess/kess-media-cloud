@@ -17,6 +17,7 @@ import publicApi from './api/public.js';
 import feedback, { reviewLinkFor } from './api/feedback.js';
 import studio from './api/studio.js';
 import studioPublic from './api/studio-public.js';
+import integrationsApi from './api/integrations.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = join(ROOT, 'public');
@@ -41,7 +42,7 @@ function notFoundPage(res, msg = 'Page not found') {
 export function createApp({ dbFile = process.env.DB_FILE || join(ROOT, 'data', 'kess-cloud.db'), dataDir = process.env.DATA_DIR || join(ROOT, 'data'), db: existingDb } = {}) {
   const db = existingDb || openDb(dbFile);
   const router = new Router();
-  for (const reg of [auth, clients, sites, requests, billing, misc, publicApi, feedback, studio, studioPublic]) reg(router, { dataDir });
+  for (const reg of [auth, clients, sites, requests, billing, misc, publicApi, feedback, studio, studioPublic, integrationsApi]) reg(router, { dataDir });
 
   const platformHosts = () => {
     const s = getSettings(db);

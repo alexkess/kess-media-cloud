@@ -4,11 +4,13 @@ import { j, logActivity, notify, loadInvoice, nextInvoiceNumber, addDays, genera
 import { esc } from '../../shared/sections.js';
 import { stripeEnabled, createCheckout, verifyStripeSignature } from '../lib/stripe.js';
 import { HttpError } from '../lib/http.js';
+import { xeroSoon } from '../lib/xero.js';
 
 export function markInvoicePaid(db, inv, { via, user = null }) {
   if (inv.status === 'paid') return false;
   db.run("UPDATE invoices SET status = 'paid', paid_at = date('now'), paid_via = ? WHERE id = ?", via, inv.id);
-  logActivity(db, { user, client_id: inv.client_id, action: 'invoice.paid', detail: `${inv.number}${via === 'stripe' ? ' (paid online)' : ''}` });
+  logActivity(db, { user, client_id: inv.client_id, action: 'invoice.paid', detail: `${inv.number}${via === 'stripe' ? ' (paid online)' : via === 'xero' ? ' (reconciled in Xero)' : ''}` });
+  if (via !== 'xero') xeroSoon(db, inv.id);
   if (via === 'stripe') notify(db, { audience: 'agency', client_id: inv.client_id, title: `${inv.client_name} paid ${inv.number} online`, body: `${money(inv.total_cents)} inc GST`, link: `#/invoices/${inv.id}` });
   return true;
 }
@@ -94,7 +96,8 @@ export default function register(r) {
     const inv = loadInvoice(ctx.db, Number(ctx.params.id));
     assertClientAccess(ctx, inv.client_id);
     if (!isAgency(ctx.user) && inv.status === 'draft') throw notFound('Invoice not found');
-    return { ...inv, can_pay_online: stripeEnabled() && inv.status === 'sent', bank_details: ctx.settings().bank_details };
+    const xero_connected = isAgency(ctx.user) && !!ctx.db.get("SELECT 1 FROM integrations WHERE provider = 'xero' AND secrets IS NOT NULL");
+    return { ...inv, can_pay_online: stripeEnabled() && inv.status === 'sent', bank_details: ctx.settings().bank_details, ...(isAgency(ctx.user) ? { xero_connected } : {}) };
   });
 
   r.patch('/api/invoices/:id', async (ctx) => {
@@ -112,6 +115,7 @@ export default function register(r) {
     });
     if (b.status && b.status !== inv.status) {
       logActivity(ctx.db, { user: ctx.user, client_id: inv.client_id, action: `invoice.${b.status}`, detail: inv.number });
+      if (['sent', 'paid', 'void'].includes(b.status)) xeroSoon(ctx.db, inv.id);
       if (b.status === 'sent') notify(ctx.db, { audience: 'client', client_id: inv.client_id, title: `Invoice ${inv.number} is ready`, body: `Due ${inv.due_date}`, link: `#/invoices/${inv.id}` });
     }
     return loadInvoice(ctx.db, inv.id);
