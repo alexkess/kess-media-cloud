@@ -14,11 +14,11 @@ Written at the end of the cloud session that built Kess Cloud (Nov 2026). Read `
 
 ## Branches
 
-- `main`: what the live server runs (`deploy/update.sh` pulls `main`). Includes websites/portal, care plans, billing, email, Stripe, 2FA, backups, reports, site feedback, photo + video studio, deploy kit, CI.
-- `claude/integrations` (pushed, **not merged**): Xero, Dropbox, Vimeo integrations; Singapore→Sydney checklist; this handover; `docs/INTEGRATIONS.md`. 42 tests passing, browser-checked against stand-in APIs. Not yet tested against the real Xero/Dropbox/Vimeo accounts.
-- `claude/socials` (pushed, **not merged**): everything in `claude/integrations` plus the port of the kess-socials **Posts** tab (roster, Ledger, captions via Claude, Publer sending, Shopify/Sanity sync, Supabase import script). 96 tests passing, browser-checked. **Sending to Publer is off unless `SOCIALS_SEND=1`, and the daily sync/suggest jobs are off unless `SOCIALS_JOBS=1`.** Follow the switch-over checklist in the README's Socials section; never have Vercel and Kess Cloud both live. Not ported: mockups, rooms, new print listings (they stay on kess-socials/Vercel).
-
-To ship: merge `claude/socials` (it contains `claude/integrations` and these docs) into `main` once reviewed, run `npm test`, push, then on the server `bash /opt/kess-cloud/deploy/update.sh`.
+- `main` (7 Nov 2026) contains everything: websites/portal, care plans, billing, email, Stripe, 2FA, backups, reports, site feedback, photo + video studio, deploy kit, CI, **Xero/Dropbox/Vimeo integrations** and the **Socials** port. 96 tests. `deploy/update.sh` on the server pulls `main`.
+- The live server only picks this up after `bash /opt/kess-cloud/deploy/update.sh` (new tables are created automatically).
+- Socials ships switched off: nothing reaches Publer unless `SOCIALS_SEND=1`, and the daily jobs need `SOCIALS_JOBS=1`. Follow the switch-over checklist in the README's Socials section; never have Vercel and Kess Cloud both live.
+- Xero/Dropbox/Vimeo were tested only against stand-in APIs; watch the first real runs (see Open items).
+- `claude/integrations`, `claude/socials` and the older `claude/*` branches are fully merged and can be deleted.
 
 ## Open items (in priority order)
 
