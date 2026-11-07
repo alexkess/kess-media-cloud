@@ -101,6 +101,8 @@ export async function pushInvoice(db, dataDir, invoiceId) {
       return { ok: true };
     }
     if (!inv.xero_id) {
+      // Issued before the cutover: Studio Ninja (or the old process) already put it in Xero. Never create a second copy.
+      if (set.push_from && inv.issue_date && inv.issue_date < set.push_from) return { skipped: `issued before ${set.push_from.split('-').reverse().join('/')}, when Xero was connected` };
       const contactId = await ensureContact(db, dataDir, inv.client_id);
       const body = { Invoices: [{
         Type: 'ACCREC', Contact: { ContactID: contactId }, InvoiceNumber: inv.number, Reference: (inv.notes || '').slice(0, 255),

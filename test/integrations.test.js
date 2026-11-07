@@ -228,6 +228,29 @@ test('Xero: card payments are recorded to the chosen bank account; expired sign-
   X.failRefresh = false;
 });
 
+test('Xero: invoices issued before the cutover date are never created in Xero, even when marked paid', async () => {
+  // An invoice imported from Studio Ninja: issued before Xero was connected, so Studio Ninja's own sync already put it in Xero.
+  const a = await owner();
+  const { push_from } = JSON.parse(db.get("SELECT settings FROM integrations WHERE provider = 'xero'").settings);
+  assert.ok(push_from, 'cutover date set on connect');
+  const inv = (await a('/api/invoices', { method: 'POST', body: { client_id: 1, items: [{ description: 'Imported shoot deposit', qty: 1, unit_cents: 50000 }] } })).data;
+  db.run("UPDATE invoices SET status = 'sent', issue_date = '2026-01-15' WHERE id = ?", inv.id);
+  const before = X.invoices.length;
+
+  markInvoicePaid(db, (await a(`/api/invoices/${inv.id}`)).data, { via: 'manual' });
+  await settle(); await settle();
+  assert.equal(X.invoices.length, before, 'not pushed when marked paid');
+  assert.equal(db.get('SELECT xero_id FROM invoices WHERE id = ?', inv.id).xero_id, null);
+
+  await xeroSync(db, dir, () => {});
+  assert.equal(X.invoices.length, before, 'not pushed by the hourly sync either');
+
+  const manual = await a(`/api/invoices/${inv.id}/xero`, { method: 'POST', body: {} });
+  assert.equal(manual.status, 400, 'the Push to Xero button refuses too');
+  assert.match(manual.data.error, /issued before \d\d\/\d\d\/\d{4}, when Xero was connected/);
+  assert.equal(X.invoices.length, before);
+});
+
 test('Dropbox: team space header, shoot folders from the template, client upload link, deliver from a folder', async () => {
   assert.equal(folderFor('/0 - Clients/{client}/{year}-{month}-{day} {job}', { client: 'Acme / Co: "Events"', job: 'Gala*', date: '2026-12-14' }), '/0 - Clients/Acme - Co- -Events-/2026-12-14 Gala-');
   assert.equal(cleanName('  ..hidden  '), 'hidden');
